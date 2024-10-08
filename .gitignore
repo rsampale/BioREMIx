@@ -1,0 +1,7 @@
+# ignore file containing API keys etc.
+.streamlit/secrets.toml
+# ignore virtual envs
+.venv
+bioremix/ 
+# ignore Python bytecode files
+__pycache__/

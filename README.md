@@ -1,2 +1,2 @@
 # BioREMIx
-One-Stop LLM-Assisted Genetic Dashboard
+Demo for a One-Stop LLM-Assisted Genetic Dashboard
