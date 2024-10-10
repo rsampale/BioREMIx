@@ -6,6 +6,9 @@ import pandas as pd
 from langchain.output_parsers import PandasDataFrameOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
+import logging
+import sys
+from llama_index.experimental.query_engine import PandasQueryEngine
 
 if 'authenticated' not in st.session_state:
     st.session_state['authenticated'] = False
@@ -24,7 +27,7 @@ if st.session_state['authenticated']:
         raise ValueError("OpenAI API key is not set. Please set the OPENAI_API_KEY environment variable.")
     # set up memory?
  
-
+    st.sidebar.button("Reboot Session", on_click=clear_session_state_except_password(),use_container_width=True)
 
 
 
@@ -52,20 +55,34 @@ if st.session_state['authenticated']:
     genes_df = pd.read_csv(file_name)
     genes_df.columns = genes_df.columns.str.replace('.', ' ')
 
+    if 'user_researchquestion' not in st.session_state:
+        st.session_state['user_researchquestion'] = None
+    if 'relevant_cols_only_df' not in st.session_state:
+        st.session_state['relevant_cols_only_df'] = None
+    if 'user_refinement_q' not in st.session_state:
+        st.session_state['user_refinement_q'] = None
 
+    llm = ChatOpenAI(temperature=0, model='gpt-4o', openai_api_key=OPENAI_API_KEY)
+
+    # PAGE FORMAT CODE START
     st.title("Hypothesis Formulation Tool")
     st.divider()
-    st.header("Develop your search space",divider='green')
-    st.subheader("What are you interested in exploring today?")
-    rq_box = st.container(height=150)
-    with rq_box:
-        user_researchquestion = st.chat_input("E.g. 'What mitochondria-specific genes are implicated in Alzheimer's?'",max_chars=500)
-        st.write("**Your Question:** ",user_researchquestion)
+    
+    if not st.session_state['user_researchquestion']:
+        # FIND COLUMNS RELEVANT TO HYPOTHESIS - MAYBE ADD AS AN OPTION LATER (AND KEEP ALL BY DEFAULT)
+        st.header("Develop your search space",divider='green')
+        st.subheader("What are you interested in exploring today?")
+        rq_box = st.container(height=150)
+        with rq_box:
+            user_researchquestion = st.text_input("E.g. 'What mitochondria-specific genes are implicated in Alzheimer's?'",max_chars=500)
+            if user_researchquestion:
+                st.session_state['user_researchquestion'] = user_researchquestion
+            st.write("**Your Question:** ",st.session_state['user_researchquestion'])
+            # FOR COPY PASTE: I am interested in finding out common cytosolic genes implicated in both Parkinsons and ALS
+        st.markdown("Please provide a research quesiton/hypothesis to proceed.")
 
-    # FIND COLUMNS RELEVANT TO HYPOTHESIS - MAYBE ADD AS AN OPTION LATER (AND KEEP ALL BY DEFAULT)
-    if user_researchquestion:
+    if st.session_state['user_researchquestion']:
         possible_columns = list(genes_df.columns)
-        llm = ChatOpenAI(temperature=0, model='gpt-4o', openai_api_key=OPENAI_API_KEY)
         # set up prompt:
         prompt = PromptTemplate(
         template=
@@ -80,12 +97,28 @@ if st.session_state['authenticated']:
         )
   
         chain = prompt | llm 
-        parser_output = chain.invoke({"query": user_researchquestion, "col_names": possible_columns})
+        parser_output = chain.invoke({"query": st.session_state['user_researchquestion'], "col_names": possible_columns})
         # st.write(parser_output)
         colnames_list = parser_output.content.split(",")
         relevant_cols_only_df = genes_df[colnames_list]
-        st.dataframe(genes_df[colnames_list])
+        st.session_state['relevant_cols_only_df'] = relevant_cols_only_df
+        st.dataframe(st.session_state['relevant_cols_only_df'])
 
         st.divider()
         st.header("Refine your results",divider='green')
+        refine_box = st.container(height=150)
+        with refine_box:
+            user_refinement_q = st.text_input("E.g. 'Only keep genes that can be found in both Parkinsons and ALS'",max_chars=500)
+            if user_refinement_q:
+                st.session_state['user_refinement_q'] = user_refinement_q
+            st.write("**Your Data Refinement Query:** ",st.session_state['user_refinement_q'])
+
+        if st.session_state['user_refinement_q']:
+            query_engine = PandasQueryEngine(df=st.session_state['relevant_cols_only_df'],llm=llm)
+            response = query_engine.query(st.session_state['user_refinement_q'])
+            pandas_str = response.metadata["pandas_instruction_str"]
+            st.write("**Generated Pandas Code:** ", pandas_str)
+            
+        # user_refined_df = pandas_str
+
         
