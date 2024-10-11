@@ -1,14 +1,11 @@
 import streamlit as st
 from functions import *
-import pprint
 from typing import Any, Dict
 import pandas as pd
-from langchain.output_parsers import PandasDataFrameOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
-import logging
-import sys
-from llama_index.experimental.query_engine import PandasQueryEngine
+from langchain_experimental.agents import create_pandas_dataframe_agent
+
 
 if 'authenticated' not in st.session_state:
     st.session_state['authenticated'] = False
@@ -74,7 +71,7 @@ if st.session_state['authenticated']:
         st.subheader("What are you interested in exploring today?")
         rq_box = st.container(height=150)
         with rq_box:
-            user_researchquestion = st.text_input("E.g. 'What mitochondria-specific genes are implicated in Alzheimer's?'",max_chars=500)
+            user_researchquestion = st.text_input("E.g. 'I want to find ATP binding enzyme's that are associated with Alzheimer's'",max_chars=500)
             if user_researchquestion:
                 st.session_state['user_researchquestion'] = user_researchquestion
             st.write("**Your Question:** ",st.session_state['user_researchquestion'])
@@ -93,13 +90,14 @@ if st.session_state['authenticated']:
         "Here is the user's research question or hypothesis: {query}"
         "Using this query and the list of column names, select any column names you think might be relevant to their question or future analysis"
         "Return the column names relevant to the query in a list format. Remember, it is better to give more columns than necessary than to give not enough."
-        "Format instructions: Return ONLY a list in the format col1,col2,col3,etc."
+        "Format instructions: Return ONLY a list in the format 'col1,col2,col3' (without the quotes, and with no brackets or anything)"
         )
   
         chain = prompt | llm 
         parser_output = chain.invoke({"query": st.session_state['user_researchquestion'], "col_names": possible_columns})
         # st.write(parser_output)
         colnames_list = parser_output.content.split(",")
+        # st.write(colnames_list)
         relevant_cols_only_df = genes_df[colnames_list]
         st.session_state['relevant_cols_only_df'] = relevant_cols_only_df
         st.dataframe(st.session_state['relevant_cols_only_df'])
@@ -108,16 +106,37 @@ if st.session_state['authenticated']:
         st.header("Refine your results",divider='green')
         refine_box = st.container(height=150)
         with refine_box:
-            user_refinement_q = st.text_input("E.g. 'Only keep genes that can be found in both Parkinsons and ALS'",max_chars=500)
+            user_refinement_q = st.text_input("E.g. 'Only keep genes with low tissue specificity'",max_chars=500)
             if user_refinement_q:
                 st.session_state['user_refinement_q'] = user_refinement_q
             st.write("**Your Data Refinement Query:** ",st.session_state['user_refinement_q'])
 
         if st.session_state['user_refinement_q']:
-            query_engine = PandasQueryEngine(df=st.session_state['relevant_cols_only_df'],llm=llm)
-            response = query_engine.query(st.session_state['user_refinement_q'])
-            pandas_str = response.metadata["pandas_instruction_str"]
-            st.write("**Generated Pandas Code:** ", pandas_str)
+            additional_prefix = """
+                Instructions: A user will give you a refining statement. By looking at the column names, rows, and cell values in the dataframe provided,
+                you will try and filter the dataframe to match their specifications. Pay attention to this specific dataframe
+                and make sure to use column names etc. that are real and relevant. User specification:\n
+            """
+            additional_suffix = """
+                \n Additional instructions: ONLY Give me the pandas operation/code to retrieve the relevant columns
+                with no additional quotes or formatting (i.e. backticks for code blocks).
+            """
+            pd_df_agent = create_pandas_dataframe_agent(
+                llm=llm,
+                df=st.session_state['relevant_cols_only_df'],
+                # agent_type="tool-calling", # can also be others like 'openai-tools' or 'openai-functions'
+                verbose=True,
+                allow_dangerous_code=True,
+                # prefix=additional_prefix,
+                # suffix=additional_suffix, # AS SOON AS YOU ADD A SUFFIX IT GETS CONFUSED ABOUT THE ACTUAL COL NAMES. DOES NOT SEEM TO BE IN THE SAME CONTEXT. 
+                include_df_in_prompt=True,
+                number_of_head_rows=10,
+                handle_parsing_errors=True
+            )
+            full_prompt = st.session_state['user_refinement_q'] + ". Your response should just be the code required to achieve this"
+            response = pd_df_agent.run(full_prompt)
+            # response = pd_df_agent.run(st.session_state['user_refinement_q'])
+            st.write(response)
             
         # user_refined_df = pandas_str
 
