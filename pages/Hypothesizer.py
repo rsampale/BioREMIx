@@ -49,7 +49,7 @@ if st.session_state['authenticated']:
         mime="text/plain"
     )
     genes_df = pd.read_csv(file_name)
-    genes_df.columns = genes_df.columns.str.replace('.', ' ')
+    genes_df.columns = genes_df.columns.str.replace('.', '_')
 
     if 'user_researchquestion' not in st.session_state:
         st.session_state['user_researchquestion'] = None
@@ -129,13 +129,20 @@ if st.session_state['authenticated']:
                 # prefix=additional_prefix,
                 # suffix=additional_suffix, # AS SOON AS YOU ADD A SUFFIX IT GETS CONFUSED ABOUT THE ACTUAL COL NAMES. DOES NOT SEEM TO BE IN THE SAME CONTEXT. 
                 include_df_in_prompt=True,
-                number_of_head_rows=10,
-                handle_parsing_errors=True
+                number_of_head_rows=10
             )
-            full_prompt = st.session_state['user_refinement_q'] + ". Your response should just be the code required to achieve this"
+            pd_df_agent.handle_parsing_errors = True
+            full_prompt = st.session_state['user_refinement_q'] + ". Your response should just be the code required to achieve this."
             response = pd_df_agent.run(full_prompt)
             # response = pd_df_agent.run(st.session_state['user_refinement_q'])
             st.write(response)
+            pandas_code_only = response.split('=', 1)[1] # keep only the pandas expression not the variable assignment
+            pandas_code_only = pandas_code_only.replace("df", "relevant_cols_only_df")
+            pandas_code_only = pandas_code_only.rstrip('`') # remove code backticks left over
+            st.write(f"Code to be evaluated:{pandas_code_only}")
+            user_refined_df = eval(pandas_code_only)
+            st.dataframe(user_refined_df)
+            
             
         # user_refined_df = pandas_str
 
