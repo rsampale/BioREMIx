@@ -1,8 +1,5 @@
 import streamlit as st
-import base64
 import time
-import markdown
-import os
 
 def authenticate():
     # placeholders variables for UI 
