@@ -6,7 +6,8 @@ from langchain.memory import ConversationBufferMemory
 from langchain.memory.chat_message_histories import StreamlitChatMessageHistory
 from langchain.prompts import PromptTemplate 
 
-
+mgi_icon = "images/the_elizabeth_h_and_james_s_mcdonnell_genome_institute_logo.jpg"
+st.logo(mgi_icon, size='large')
 
 # check if authenticated is in session state
 if 'authenticated' not in st.session_state:

@@ -5,6 +5,8 @@ from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
 
+mgi_icon = "images/the_elizabeth_h_and_james_s_mcdonnell_genome_institute_logo.jpg"
+st.logo(mgi_icon, size='large')
 
 if 'authenticated' not in st.session_state:
     st.session_state['authenticated'] = False
