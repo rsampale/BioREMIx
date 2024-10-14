@@ -28,10 +28,12 @@ if st.session_state['authenticated']:
 
 
     # Initialize csv/dataframe being searched and manipulated - display it in the sidebar at all times for download and info
+    
+    ## MAIN DATAFRAME UPLOAD ON SIDEBAR:
     default_allgenes_filename = "data/240814_DiseaseGene_Localization.csv"
     with open(default_allgenes_filename, 'r') as file:
         default_allgenes_content = file.read()
-    uploaded_file = st.sidebar.file_uploader("Upload your own gene-metadata matrix", type=["txt", "csv", "json"])
+    uploaded_file = st.sidebar.file_uploader("Upload your own **gene-metadata matrix**", type=["txt", "csv", "json"])
     if uploaded_file is not None:
         # Use uploaded file's name and content
         file_name = uploaded_file.name
@@ -43,11 +45,36 @@ if st.session_state['authenticated']:
     # Display the file name and download button in the sidebar
     st.sidebar.write(f"**Currently Selected File Name:** {file_name}")
     st.sidebar.download_button(
-        label="Download File",
+        label="Download Genes Data File",
         data=file_content,
         file_name=file_name,
         mime="text/plain"
     )
+    st.sidebar.divider()
+    
+    ## COLUMN NAME INFORMATION DATAFRAME UPLOAD ON SIDEBAR
+    default_colmeta_filename = "data/240814_DiseaseGene_colmetadata.csv"
+    with open(default_colmeta_filename, 'r') as file:
+        default_colmeta_content = file.read()
+    uploaded_colmeta_file = st.sidebar.file_uploader("Upload your own **column-name metadata matrix**", type=["txt", "csv", "json"])
+    if uploaded_colmeta_file is not None:
+        # Use uploaded file's name and content
+        colmeta_file_name = uploaded_colmeta_file.name
+        colmeta_file_content = uploaded_colmeta_file.read()
+    else:
+        # Use default file if no file is uploaded
+        colmeta_file_name = default_colmeta_filename
+        colmeta_file_content = default_colmeta_content
+    # Display the file name and download button in the sidebar
+    st.sidebar.write(f"**Currently Selected Metadata File Name:** {colmeta_file_name}")
+    st.sidebar.download_button(
+        label="Download Column Metadata File",
+        data=colmeta_file_content,
+        file_name=colmeta_file_name,
+        mime="text/plain"
+    )
+    ### ACTUALLY USE THE COLMETA - tbd 
+    
     genes_df = pd.read_csv(file_name)
     genes_df.columns = genes_df.columns.str.replace('.', '_')
 
@@ -132,7 +159,7 @@ if st.session_state['authenticated']:
                 number_of_head_rows=10
             )
             pd_df_agent.handle_parsing_errors = True
-            full_prompt = st.session_state['user_refinement_q'] + ". Your response should just be the code required to achieve this."
+            full_prompt = st.session_state['user_refinement_q'] + ". Your response should just be the pandas expression required to achieve this. Do not include code formatting markers like backticks. E.g. you might return df_y = dfx[dfx['blah'] == 'foo']"
             response = pd_df_agent.run(full_prompt)
             # response = pd_df_agent.run(st.session_state['user_refinement_q'])
             st.write(response)
@@ -143,6 +170,17 @@ if st.session_state['authenticated']:
             user_refined_df = eval(pandas_code_only)
             st.dataframe(user_refined_df)
             
+            
+            
+            # ADD 3 BUTTONS FOR: RE-REFINE, CHAT WITH DATA, ANALYZE
+            left_col, middle_col, right_col = st.columns(3)
+            
+            if left_col.button("Keep Refining", icon="🔃", use_container_width=True):
+                left_col.markdown("You clicked the refining button.")
+            if middle_col.button("Chat with your Data", icon="💬", use_container_width=True):
+                middle_col.markdown("You clicked the chat button.")
+            if right_col.button("Ready To Analyze", icon="🔬", use_container_width=True):
+                right_col.markdown("You clicked the analyze button.")
             
         # user_refined_df = pandas_str
 
