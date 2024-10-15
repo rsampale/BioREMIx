@@ -99,7 +99,7 @@ if st.session_state['authenticated']:
         st.subheader("What are you interested in exploring today?")
         rq_box = st.container(height=150)
         with rq_box:
-            user_researchquestion = st.text_input("E.g. 'I want to find ATP binding enzyme's that are associated with Alzheimer's'",max_chars=500)
+            user_researchquestion = st.text_input("E.g. 'I want to analyze enzymatic proteins that are associated with ALS'",max_chars=500)
             if user_researchquestion:
                 st.session_state['user_researchquestion'] = user_researchquestion
             st.write("**Your Question:** ",st.session_state['user_researchquestion'])
