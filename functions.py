@@ -53,3 +53,6 @@ def clear_session_state_except_password():
         # If the key is not 'authenticated', delete it from the session_state
         if key != 'authenticated':
             del st.session_state[key]
+            
+def clear_refinesection():
+    st.session_state['refine_section_visible'] = False
