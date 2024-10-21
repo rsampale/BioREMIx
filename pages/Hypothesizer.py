@@ -95,6 +95,8 @@ if st.session_state['authenticated']:
     # Make into invisible container so it can be hidden with appropriate buttons?
     if 'refine_section_visible' not in st.session_state:
         st.session_state['refine_section_visible'] = True
+    if 'do_refine_loop' not in st.session_state:
+        st.session_state['do_refine_loop'] = None
         
     if st.session_state['refine_section_visible']:
         st.title("Hypothesis Formulation Tool")
@@ -196,43 +198,20 @@ if st.session_state['authenticated']:
                     
     else: # refine_section_visible is FALSE
         
+        if 'show_buttons' not in st.session_state:
+            st.session_state['show_buttons'] = True
+
         ### REPEAT REFINEMENT: 
         
-        # st.write(st.session_state)
-        st.subheader("Enter your refining statement:")
-        
-        repeat_refine_box = st.container(height=150)
-        with repeat_refine_box:
-            user_rerefinement_q = st.text_input("E.g. 'Only keep genes with low tissue specificity'",max_chars=501) # if maxchars = 500 it thinks its the same text_input as before
-            if user_rerefinement_q:
-                st.session_state['user_refinement_q'] = user_rerefinement_q
-            st.write("**Your Data Refinement Query:** ",st.session_state['user_refinement_q'])
-        
-        ## repeat-refining agent:
-        pd_df_agent = create_pandas_dataframe_agent(
-            llm=llm,
-            df=st.session_state['user_refined_df'],
-            # agent_type="tool-calling", # can also be others like 'openai-tools' or 'openai-functions'
-            verbose=True,
-            allow_dangerous_code=True,
-            # prefix=additional_prefix,
-            # suffix=additional_suffix, # AS SOON AS YOU ADD A SUFFIX IT GETS CONFUSED ABOUT THE ACTUAL COL NAMES. DOES NOT SEEM TO BE IN THE SAME CONTEXT. 
-            include_df_in_prompt=True,
-            number_of_head_rows=10
-        )
-        pd_df_agent.handle_parsing_errors = True
-        full_prompt = st.session_state['user_refinement_q'] + ". Your response should just be the pandas expression required to achieve this. Do not include code formatting markers like backticks. E.g. you might return df_y = dfx[dfx['blah'] == 'foo']"
-        response = pd_df_agent.run(full_prompt)
-        st.write(response)
-        pandas_code_only = response.split('=', 1)[1] # keep only the pandas expression not the variable assignment
-        pandas_code_only = pandas_code_only.replace("df", "st.session_state['user_refined_df']")
-        pandas_code_only = pandas_code_only.rstrip('`') # remove code backticks left over
-        st.write(f"Code to be evaluated:{pandas_code_only}")
-        user_refined_df = eval(pandas_code_only)
-        st.session_state['user_refined_df'] = user_refined_df
-        
-        st.header("Current refined data:")
-        st.dataframe(st.session_state['user_refined_df'])
+        if st.session_state['do_refine_loop']:
+            repeat_refinement(llm=llm)
 
+        left_col, right_col = st.columns(2)
+        chat_button_ph = st.empty()
+        analyze_button_ph = st.empty()
+
+        if st.session_state['show_buttons']:
+            left_col.button("Chat with your Data", icon="💬", use_container_width=True,on_click=chat_buttonclick)
+            right_col.button("Ready To Analyze", icon="🔬", use_container_width=True)
             
         

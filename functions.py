@@ -1,5 +1,6 @@
 import streamlit as st
 import time
+from langchain_experimental.agents import create_pandas_dataframe_agent
 
 def authenticate():
     # placeholders variables for UI 
@@ -56,3 +57,51 @@ def clear_session_state_except_password():
             
 def clear_refinesection():
     st.session_state['refine_section_visible'] = False
+    st.session_state['do_refine_loop'] = True
+
+def chat_buttonclick():
+    st.session_state['do_refine_loop'] = False
+    st.session_state['show_buttons'] = False
+
+
+
+def repeat_refinement(llm):
+    if 'input_text' not in st.session_state:
+        st.session_state['input_text'] = ''
+
+    st.subheader("Enter your refining statement:")
+        
+    repeat_refine_box = st.container(height=150)
+    with repeat_refine_box:
+        user_rerefinement_q = st.text_input("E.g. 'Only keep genes with low tissue specificity'",max_chars=501,value=st.session_state['input_text'],key='input_text') # if maxchars = 500 it thinks its the same text_input as before
+        if user_rerefinement_q:
+            st.session_state['user_refinement_q'] = user_rerefinement_q
+        st.write("**Your Data Refinement Query:** ",st.session_state['user_refinement_q'])
+    
+    ## repeat-refining agent:
+    pd_df_agent = create_pandas_dataframe_agent(
+        llm=llm,
+        df=st.session_state['user_refined_df'],
+        # agent_type="tool-calling", # can also be others like 'openai-tools' or 'openai-functions'
+        verbose=True,
+        allow_dangerous_code=True,
+        # prefix=additional_prefix,
+        # suffix=additional_suffix, # AS SOON AS YOU ADD A SUFFIX IT GETS CONFUSED ABOUT THE ACTUAL COL NAMES. DOES NOT SEEM TO BE IN THE SAME CONTEXT. 
+        include_df_in_prompt=True,
+        number_of_head_rows=10
+    )
+    pd_df_agent.handle_parsing_errors = True
+    full_prompt = st.session_state['user_refinement_q'] + ". Your response should just be the pandas expression required to achieve this. Do not include code formatting markers like backticks. E.g. you might return df_y = dfx[dfx['blah'] == 'foo']"
+    response = pd_df_agent.run(full_prompt)
+    # st.write(response)
+    pandas_code_only = response.split('=', 1)[1] # keep only the pandas expression not the variable assignment
+    pandas_code_only = pandas_code_only.replace("df", "st.session_state['user_refined_df']")
+    pandas_code_only = pandas_code_only.rstrip('`') # remove code backticks left over
+    # st.write(f"Code to be evaluated:{pandas_code_only}")
+    st.subheader("Instructions:")
+    st.write("**Press enter to submit a refinement. Repeat as many times as needed.**")
+    user_refined_df = eval(pandas_code_only)
+    st.session_state['user_refined_df'] = user_refined_df
+    
+    st.header("Current refined data:")
+    st.dataframe(st.session_state['user_refined_df'])
