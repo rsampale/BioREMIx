@@ -1,6 +1,7 @@
 import streamlit as st
 import time
 from langchain_experimental.agents import create_pandas_dataframe_agent
+from langchain.callbacks import StreamlitCallbackHandler
 
 def authenticate():
     # placeholders variables for UI 
@@ -55,19 +56,24 @@ def clear_session_state_except_password():
         if key != 'authenticated':
             del st.session_state[key]
             
-def clear_refinesection():
+def refineloop_buttonclick(): # SHOULD MAKE THESE JUST TOGGLE MAYBE INSTEAD OF HARDCODING TRUE OR FALSE
     st.session_state['refine_section_visible'] = False
     st.session_state['do_refine_loop'] = True
+    st.session_state['show_chat_analyze_buttons'] = True
+    st.session_state['show_refine_analyze_buttons'] = False
+    st.session_state['data_chat'] = False
 
 def chat_buttonclick():
     st.session_state['do_refine_loop'] = False
-    st.session_state['show_buttons'] = False
+    st.session_state['show_chat_analyze_buttons'] = False
+    st.session_state['show_refine_analyze_buttons'] = True
+    st.session_state['data_chat'] = True
 
 
 
 def repeat_refinement(llm):
     if 'input_text' not in st.session_state:
-        st.session_state['input_text'] = ''
+        st.session_state['input_text'] = None
 
     st.subheader("Enter your refining statement:")
         
@@ -76,32 +82,59 @@ def repeat_refinement(llm):
         user_rerefinement_q = st.text_input("E.g. 'Only keep genes with low tissue specificity'",max_chars=501,value=st.session_state['input_text'],key='input_text') # if maxchars = 500 it thinks its the same text_input as before
         if user_rerefinement_q:
             st.session_state['user_refinement_q'] = user_rerefinement_q
-        st.write("**Your Data Refinement Query:** ",st.session_state['user_refinement_q'])
+        st.write("**Your Most Recent Data Refinement Query:** ",st.session_state['user_refinement_q'])
     
     ## repeat-refining agent:
+    if st.session_state['input_text']: # only bother re-creating the dataframe if the user has given new input
+        pd_df_agent = create_pandas_dataframe_agent(
+            llm=llm,
+            df=st.session_state['user_refined_df'],
+            # agent_type="tool-calling", # can also be others like 'openai-tools' or 'openai-functions'
+            verbose=True,
+            allow_dangerous_code=True,
+            # prefix=additional_prefix,
+            # suffix=additional_suffix, # AS SOON AS YOU ADD A SUFFIX IT GETS CONFUSED ABOUT THE ACTUAL COL NAMES. DOES NOT SEEM TO BE IN THE SAME CONTEXT. 
+            include_df_in_prompt=True,
+            number_of_head_rows=10
+        )
+        pd_df_agent.handle_parsing_errors = True
+        full_prompt = st.session_state['user_refinement_q'] + ". Your response should just be the pandas expression required to achieve this. Do not include code formatting markers like backticks. E.g. you might return df_y = dfx[dfx['blah'] == 'foo']"
+        response = pd_df_agent.run(full_prompt)
+        # st.write(response)
+        pandas_code_only = response.split('=', 1)[1] # keep only the pandas expression not the variable assignment
+        pandas_code_only = pandas_code_only.replace("df", "st.session_state['user_refined_df']")
+        pandas_code_only = pandas_code_only.rstrip('`') # remove code backticks left over
+        # st.write(f"Code to be evaluated:{pandas_code_only}")
+        user_refined_df = eval(pandas_code_only)
+        st.session_state['user_refined_df'] = user_refined_df
+    
+    st.subheader("Instructions:")
+    st.write("**Press enter to submit a refinement. Repeat as many times as needed.**")
+    st.header("Current refined data:")
+    st.dataframe(st.session_state['user_refined_df'])
+
+def chat_with_data(llm):
     pd_df_agent = create_pandas_dataframe_agent(
         llm=llm,
         df=st.session_state['user_refined_df'],
-        # agent_type="tool-calling", # can also be others like 'openai-tools' or 'openai-functions'
-        verbose=True,
         allow_dangerous_code=True,
-        # prefix=additional_prefix,
-        # suffix=additional_suffix, # AS SOON AS YOU ADD A SUFFIX IT GETS CONFUSED ABOUT THE ACTUAL COL NAMES. DOES NOT SEEM TO BE IN THE SAME CONTEXT. 
         include_df_in_prompt=True,
-        number_of_head_rows=10
+        number_of_head_rows=20
     )
     pd_df_agent.handle_parsing_errors = True
-    full_prompt = st.session_state['user_refinement_q'] + ". Your response should just be the pandas expression required to achieve this. Do not include code formatting markers like backticks. E.g. you might return df_y = dfx[dfx['blah'] == 'foo']"
-    response = pd_df_agent.run(full_prompt)
-    # st.write(response)
-    pandas_code_only = response.split('=', 1)[1] # keep only the pandas expression not the variable assignment
-    pandas_code_only = pandas_code_only.replace("df", "st.session_state['user_refined_df']")
-    pandas_code_only = pandas_code_only.rstrip('`') # remove code backticks left over
-    # st.write(f"Code to be evaluated:{pandas_code_only}")
-    st.subheader("Instructions:")
-    st.write("**Press enter to submit a refinement. Repeat as many times as needed.**")
-    user_refined_df = eval(pandas_code_only)
-    st.session_state['user_refined_df'] = user_refined_df
+
+    if "messages" not in st.session_state or st.sidebar.button("Clear chat history",use_container_width=True):
+        st.session_state["messages"] = [{"role": "assistant", "content": "What are you interested in discovering about the data?"}]
     
-    st.header("Current refined data:")
-    st.dataframe(st.session_state['user_refined_df'])
+    for msg in st.session_state.messages:
+        st.chat_message(msg["role"]).write(msg["content"])
+
+    if prompt := st.chat_input(placeholder="What is this data about?"):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.chat_message("user").write(prompt)
+
+    with st.chat_message("assistant"):
+        st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False)
+        response = pd_df_agent.run(st.session_state.messages, callbacks=[st_cb])
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        st.write(response)

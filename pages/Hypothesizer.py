@@ -30,11 +30,14 @@ if st.session_state['authenticated']:
 
 
     # Initialize csv/dataframe being searched and manipulated - display it in the sidebar at all times for download and info
-    
+    if 'refine_section_visible' not in st.session_state:
+        st.session_state['refine_section_visible'] = True
+
     ## MAIN DATAFRAME UPLOAD ON SIDEBAR:
     default_allgenes_filename = "data/240814_DiseaseGene_Localization.csv"
     with open(default_allgenes_filename, 'r') as file:
         default_allgenes_content = file.read()
+
     uploaded_file = st.sidebar.file_uploader("Upload your own **gene-metadata matrix**", type=["txt", "csv", "json"])
     if uploaded_file is not None:
         # Use uploaded file's name and content
@@ -45,6 +48,7 @@ if st.session_state['authenticated']:
         file_name = default_allgenes_filename
         file_content = default_allgenes_content
     # Display the file name and download button in the sidebar
+
     st.sidebar.write(f"**Currently Selected File Name:** {file_name}")
     st.sidebar.download_button(
         label="Download Genes Data File",
@@ -58,6 +62,7 @@ if st.session_state['authenticated']:
     default_colmeta_filename = "data/240814_DiseaseGene_colmetadata.csv"
     with open(default_colmeta_filename, 'r') as file:
         default_colmeta_content = file.read()
+ 
     uploaded_colmeta_file = st.sidebar.file_uploader("Upload your own **column-name metadata matrix**", type=["txt", "csv", "json"])
     if uploaded_colmeta_file is not None:
         # Use uploaded file's name and content
@@ -68,6 +73,7 @@ if st.session_state['authenticated']:
         colmeta_file_name = default_colmeta_filename
         colmeta_file_content = default_colmeta_content
     # Display the file name and download button in the sidebar
+
     st.sidebar.write(f"**Currently Selected Metadata File Name:** {colmeta_file_name}")
     st.sidebar.download_button(
         label="Download Column Metadata File",
@@ -93,8 +99,6 @@ if st.session_state['authenticated']:
 
     # PAGE FORMAT CODE START
     # Make into invisible container so it can be hidden with appropriate buttons?
-    if 'refine_section_visible' not in st.session_state:
-        st.session_state['refine_section_visible'] = True
     if 'do_refine_loop' not in st.session_state:
         st.session_state['do_refine_loop'] = None
         
@@ -175,11 +179,11 @@ if st.session_state['authenticated']:
                 full_prompt = st.session_state['user_refinement_q'] + ". Your response should just be the pandas expression required to achieve this. Do not include code formatting markers like backticks. E.g. you might return df_y = dfx[dfx['blah'] == 'foo']"
                 response = pd_df_agent.run(full_prompt)
                 # response = pd_df_agent.run(st.session_state['user_refinement_q'])
-                st.write(response)
+                # st.write(response) # FOR DEBUGGING LLM OUTPUT
                 pandas_code_only = response.split('=', 1)[1] # keep only the pandas expression not the variable assignment
                 pandas_code_only = pandas_code_only.replace("df", "relevant_cols_only_df")
                 pandas_code_only = pandas_code_only.rstrip('`') # remove code backticks left over
-                st.write(f"Code to be evaluated:{pandas_code_only}")
+                # st.write(f"Code to be evaluated:{pandas_code_only}") # FOR DEBUGGING LLM OUTPUT
                 user_refined_df = eval(pandas_code_only)
                 st.session_state['user_refined_df'] = user_refined_df
                 st.dataframe(user_refined_df)
@@ -189,29 +193,36 @@ if st.session_state['authenticated']:
                 # ADD 3 BUTTONS FOR: RE-REFINE, CHAT WITH DATA, ANALYZE
                 left_col, middle_col, right_col = st.columns(3)
                 
-                if left_col.button("Keep Refining", icon="🔃", use_container_width=True,on_click=clear_refinesection):
-                    left_col.markdown("You clicked the refining button.")
-                if middle_col.button("Chat with your Data", icon="💬", use_container_width=True):
-                    middle_col.markdown("You clicked the chat button.")
-                if right_col.button("Ready To Analyze", icon="🔬", use_container_width=True):
-                    right_col.markdown("You clicked the analyze button.")
+                left_col.button("Keep Refining", icon="🔃", use_container_width=True,on_click=refineloop_buttonclick)
+                middle_col.button("Chat with your Data", icon="💬", use_container_width=True,on_click=chat_buttonclick)
+                right_col.button("Ready To Analyze", icon="🔬", use_container_width=True)
                     
     else: # refine_section_visible is FALSE
         
-        if 'show_buttons' not in st.session_state:
-            st.session_state['show_buttons'] = True
+        if 'show_chat_analyze_buttons' not in st.session_state:
+            st.session_state['show_chat_analyze_buttons'] = True
+        if 'show_refine_analyze_buttons' not in st.session_state:
+            st.session_state['show_refine_analyze_buttons'] = True
+        if 'data_chat' not in st.session_state:
+            st.session_state['data_chat'] = False
 
         ### REPEAT REFINEMENT: 
         
         if st.session_state['do_refine_loop']:
             repeat_refinement(llm=llm)
 
+        if st.session_state['data_chat']:
+            chat_with_data(llm=llm)
+
         left_col, right_col = st.columns(2)
         chat_button_ph = st.empty()
         analyze_button_ph = st.empty()
 
-        if st.session_state['show_buttons']:
+        if st.session_state['show_chat_analyze_buttons']:
             left_col.button("Chat with your Data", icon="💬", use_container_width=True,on_click=chat_buttonclick)
             right_col.button("Ready To Analyze", icon="🔬", use_container_width=True)
-            
+
+        if st.session_state['show_refine_analyze_buttons']:
+            left_col.button("Keep Refining", icon="🔃", use_container_width=True,on_click=refineloop_buttonclick)
+            right_col.button("Ready To Analyze", icon="🔬", use_container_width=True)
         
