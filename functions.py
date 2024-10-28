@@ -64,6 +64,7 @@ def refineloop_buttonclick(): # SHOULD MAKE THESE JUST TOGGLE MAYBE INSTEAD OF H
     st.session_state['data_chat'] = False
 
 def chat_buttonclick():
+    st.session_state['refine_section_visible'] = False
     st.session_state['do_refine_loop'] = False
     st.session_state['show_chat_analyze_buttons'] = False
     st.session_state['show_refine_analyze_buttons'] = True
@@ -134,7 +135,9 @@ def chat_with_data(llm):
         st.chat_message("user").write(prompt)
 
     with st.chat_message("assistant"):
-        st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False)
-        response = pd_df_agent.run(st.session_state.messages, callbacks=[st_cb])
-        st.session_state.messages.append({"role": "assistant", "content": response})
-        st.write(response)
+        # st.write(len(st.session_state.messages)) # is 1 before user provides anything
+        if len(st.session_state.messages) > 1:
+            st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False)
+            response = pd_df_agent.run(st.session_state.messages, callbacks=[st_cb])
+            st.session_state.messages.append({"role": "assistant", "content": response})
+            st.write(response)

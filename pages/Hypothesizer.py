@@ -34,7 +34,7 @@ if st.session_state['authenticated']:
         st.session_state['refine_section_visible'] = True
 
     ## MAIN DATAFRAME UPLOAD ON SIDEBAR:
-    default_allgenes_filename = "data/240814_DiseaseGene_Localization.csv"
+    default_allgenes_filename = "data/241016_DiseaseGene_Localization.csv"
     with open(default_allgenes_filename, 'r') as file:
         default_allgenes_content = file.read()
 
