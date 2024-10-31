@@ -154,5 +154,11 @@ def chat_with_data(llm):
 
 def analyze_data(llm):
     st.subheader("Restate your research objectives, if desired:")
+    st.write("Default = the initial research question you provided")
+    new_researchquestion = st.text_input("E.g. 'I am interested in finding where common ALS and PD genes localize'",max_chars=500)
+    if new_researchquestion:
+        st.session_state['user_researchquestion'] = new_researchquestion
+    st.write(f"**Current research question:** {st.session_state.user_researchquestion}")
+
     st.divider()
     st.subheader("Here are some suggested visualizations that might be of use to you:")
