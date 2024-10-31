@@ -62,6 +62,7 @@ def refineloop_buttonclick(): # SHOULD MAKE THESE JUST TOGGLE MAYBE INSTEAD OF H
     st.session_state['show_chat_analyze_buttons'] = True
     st.session_state['show_refine_analyze_buttons'] = False
     st.session_state['data_chat'] = False
+    st.session_state['analyze_data'] = False
 
 def chat_buttonclick():
     st.session_state['refine_section_visible'] = False
@@ -69,6 +70,7 @@ def chat_buttonclick():
     st.session_state['show_chat_analyze_buttons'] = False
     st.session_state['show_refine_analyze_buttons'] = True
     st.session_state['data_chat'] = True
+    st.session_state['analyze_data'] = False
 
 def analyze_buttonclick():
     st.session_state['refine_section_visible'] = False
@@ -76,6 +78,7 @@ def analyze_buttonclick():
     st.session_state['show_chat_analyze_buttons'] = False
     st.session_state['show_refine_analyze_buttons'] = False
     st.session_state['data_chat'] = False
+    st.session_state['analyze_data'] = True
 
 
 
@@ -148,3 +151,8 @@ def chat_with_data(llm):
             response = pd_df_agent.run(st.session_state.messages, callbacks=[st_cb])
             st.session_state.messages.append({"role": "assistant", "content": response})
             st.write(response)
+
+def analyze_data(llm):
+    st.subheader("Restate your research objectives, if desired:")
+    st.divider()
+    st.subheader("Here are some suggested visualizations that might be of use to you:")

@@ -205,6 +205,8 @@ if st.session_state['authenticated']:
             st.session_state['show_refine_analyze_buttons'] = True
         if 'data_chat' not in st.session_state:
             st.session_state['data_chat'] = False
+        if 'analyze_data' not in st.session_state:
+            st.session_state['analyze_data'] = False
 
         ### REPEAT REFINEMENT: 
         
@@ -213,6 +215,9 @@ if st.session_state['authenticated']:
 
         if st.session_state['data_chat']:
             chat_with_data(llm=llm)
+
+        if st.session_state['analyze_data']:
+            analyze_data(llm=llm)
 
         left_col, right_col = st.columns(2)
         chat_button_ph = st.empty()
