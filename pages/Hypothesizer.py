@@ -195,7 +195,7 @@ if st.session_state['authenticated']:
                 
                 left_col.button("Keep Refining", icon="🔃", use_container_width=True,on_click=refineloop_buttonclick)
                 middle_col.button("Chat with your Data", icon="💬", use_container_width=True,on_click=chat_buttonclick)
-                right_col.button("Ready To Analyze", icon="🔬", use_container_width=True)
+                right_col.button("Ready To Analyze", icon="🔬", use_container_width=True,on_click=analyze_buttonclick)
                     
     else: # refine_section_visible is FALSE
         
@@ -220,9 +220,9 @@ if st.session_state['authenticated']:
 
         if st.session_state['show_chat_analyze_buttons']:
             left_col.button("Chat with your Data", icon="💬", use_container_width=True,on_click=chat_buttonclick)
-            right_col.button("Ready To Analyze", icon="🔬", use_container_width=True)
+            right_col.button("Ready To Analyze", icon="🔬", use_container_width=True,on_click=analyze_buttonclick)
 
         if st.session_state['show_refine_analyze_buttons']:
             left_col.button("Keep Refining", icon="🔃", use_container_width=True,on_click=refineloop_buttonclick)
-            right_col.button("Ready To Analyze", icon="🔬", use_container_width=True)
+            right_col.button("Ready To Analyze", icon="🔬", use_container_width=True,on_click=analyze_buttonclick)
         

@@ -70,6 +70,13 @@ def chat_buttonclick():
     st.session_state['show_refine_analyze_buttons'] = True
     st.session_state['data_chat'] = True
 
+def analyze_buttonclick():
+    st.session_state['refine_section_visible'] = False
+    st.session_state['do_refine_loop'] = False
+    st.session_state['show_chat_analyze_buttons'] = False
+    st.session_state['show_refine_analyze_buttons'] = False
+    st.session_state['data_chat'] = False
+
 
 
 def repeat_refinement(llm):
