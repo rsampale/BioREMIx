@@ -100,7 +100,7 @@ def repeat_refinement(llm):
         pd_df_agent = create_pandas_dataframe_agent(
             llm=llm,
             df=st.session_state['user_refined_df'],
-            # agent_type="tool-calling", # can also be others like 'openai-tools' or 'openai-functions'
+            agent_type="tool-calling", # can also be others like 'openai-tools' or 'openai-functions'
             verbose=True,
             allow_dangerous_code=True,
             # prefix=additional_prefix,
@@ -108,7 +108,7 @@ def repeat_refinement(llm):
             include_df_in_prompt=True,
             number_of_head_rows=10
         )
-        pd_df_agent.handle_parsing_errors = True
+        pd_df_agent.handle_parsing_errors = "Check your output and make sure it conforms, use the Action Input/Final Answer syntax"
         full_prompt = st.session_state['user_refinement_q'] + ". Your response should just be the pandas expression required to achieve this. Do not include code formatting markers like backticks. E.g. you might return df_y = dfx[dfx['blah'] == 'foo']"
         response = pd_df_agent.run(full_prompt)
         # st.write(response)
@@ -125,9 +125,25 @@ def repeat_refinement(llm):
     st.dataframe(st.session_state['user_refined_df'])
 
 def chat_with_data(llm):
+
+    prefix = f"""
+    If you do not understand the meaning of a column by its name, consult the following 
+    dictionary for column names and their descriptions: {st.session_state.colmeta_dict}
+    """
+
+    non_toolcalling_agent = create_pandas_dataframe_agent(
+        llm=llm,
+        df=st.session_state['user_refined_df'],
+        allow_dangerous_code=True,
+        include_df_in_prompt=True,
+        number_of_head_rows=20
+    )
+
     pd_df_agent = create_pandas_dataframe_agent(
         llm=llm,
         df=st.session_state['user_refined_df'],
+        # prefix=prefix, # Putting the prefix here makes each query too long, because it tacks it on every time - find a way to load it into memory
+        agent_type="tool-calling",
         allow_dangerous_code=True,
         include_df_in_prompt=True,
         number_of_head_rows=20
@@ -147,8 +163,11 @@ def chat_with_data(llm):
     with st.chat_message("assistant"):
         # st.write(len(st.session_state.messages)) # is 1 before user provides anything
         if len(st.session_state.messages) > 1:
-            st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False)
-            response = pd_df_agent.run(st.session_state.messages, callbacks=[st_cb])
+            st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False,max_thought_containers=2)
+            try:
+                response = non_toolcalling_agent.run(st.session_state.messages, callbacks=[st_cb]) 
+            except:
+                response = pd_df_agent.run(st.session_state.messages, callbacks=[st_cb]) # Still can't access the internet to provide specifics on studies etc.
             st.session_state.messages.append({"role": "assistant", "content": response})
             st.write(response)
 
@@ -162,3 +181,21 @@ def analyze_data(llm):
 
     st.divider()
     st.subheader("Here are some suggested visualizations that might be of use to you:")
+
+    prompt = f"""
+    Consult your dataframe 'df' and user research question. Your goal is to suggest visualizations, graphs, charts, etc. to guide their research question and objectives.
+    User research objective: {st.session_state.user_researchquestion}\n
+    Output format instructions: A dictionary of the graph type or name as the key, and a more detailed description of this graph/visualization as the value. Include a maximum of 5 different visualizations.
+    Always include a final key-value pair that is 'I have my own idea':'User will give their own graph suggestion'\n
+    DO NOT FORGET THE PROPER DICTIONARY OUTPUT FORMAT.
+    """
+    viz_pandas_agent = create_pandas_dataframe_agent(
+        llm=llm,
+        df=st.session_state['user_refined_df'],
+        agent_type="tool-calling",
+        allow_dangerous_code=True,
+        include_df_in_prompt=True,
+        number_of_head_rows=20
+    )
+    viz_dict_response = viz_pandas_agent.run(prompt)
+    st.write(viz_dict_response)

@@ -1,1 +1,120 @@
-"colname","description"
+Colname,Description
+Gene,Gene name or symbol
+GOI,Gene of Interest - whether it is one of the MGI's genes of interest
+Localization.Simple.HPA,
+Subcellular.main.location.HPA,
+Subcellular.location.HPA,
+MitoCarta3.0,
+MitoCarta3.0_SubMitoLocalization,
+MitoCarta3.0_Evidence,
+MitoCarta3.0_MitoPathways,
+Gene.synonym,
+Ensembl,Ensembl ID
+Gene.description,Gene description
+Uniprot,Uniprot ID
+Chromosome,Chromosome where gene is found
+Position,Position on chromosome
+Protein.class,"Class of the protein that the gene codes for, e.g. enzymes, membrane proteins, transporters, disease related genes etc."
+Biological.process,"Biological processes the gene is associated with, e.g. lipid metabolism, protein transport, etc."
+Molecular.function,"Molecular function of the protein coded by the gene, e.g. Acetyltransferase, translocase, chaperone, etc."
+Disease.involvement,One or multiple diseases the gene may be involved in
+Evidence,
+HPA.evidence,
+UniProt.evidence,
+NeXtProt.evidence,
+RNA.tissue.specificity,
+RNA.tissue.distribution,
+RNA.tissue.specificity.score,
+RNA.tissue.specific.nTPM,
+RNA.single.cell.type.specificity,
+RNA.single.cell.type.distribution,
+RNA.single.cell.type.specificity.score,
+RNA.single.cell.type.specific.nTPM,
+RNA.cell.line.specificity,
+RNA.cell.line.distribution,
+RNA.cell.line.specificity.score,
+RNA.cell.line.specific.nTPM,
+RNA.tissue.cell.type.enrichment,
+Antibody,
+Reliability..IH.,
+Reliability..IF.,
+Description.MitoCarta,MitoCarta's description of the protein coded by the gene
+ProteinLength,Length of the protein coded for by the gene (in amino acids)
+hg19_Chromosome,"hg19 chromosome the gene is found in, if any"
+hg19_Start,"Start position of the gene on the hg19 chromosome it is found, if any"
+hg19_Stop,"Stop position of the gene on the hg19 chromosome it is found, if any"
+Tissues.MitoCarta,"Human tissues the gene is associated with, if any"
+cerebrum_total_peak_intensity_log10.MitoCarta,
+cerebellum_total_peak_intensity_log10.MitoCarta,
+brainstem_total_peak_intensity_log10.MitoCarta,
+spinalcord_total_peak_intensity_log10.MitoCarta,
+HPA_Main_Location_2020..Reliability.MitoCarta,
+rowid,
+ALS.hpa,
+HSP.hpa,
+CMT.hpa,
+FDA.hpa,
+Actin.filaments,
+Aggresome,
+Cell.Junctions,
+Centriolar.satellite,
+Centrosome,
+Cytokinetic.bridge,
+Cytoplasmic.bodies,
+Cytosol,
+Endoplasmic.reticulum,
+Endosomes,
+Focal.adhesion.sites,
+Golgi.apparatus,
+Intermediate.filaments,
+Kinetochore,
+Lipid.droplets,
+Lysosomes,
+Microtubule.ends,
+Microtubules,
+Midbody,
+Midbody.ring,
+Mitochondria,
+Mitotic.chromosome,
+Mitotic.spindle,
+Nuclear.bodies,
+Nuclear.membrane,
+Nuclear.speckles,
+Nucleoli,
+Nucleoli.fibrillar.center,
+Nucleoli.rim,
+Nucleoplasm,
+Peroxisomes,
+Plasma.membrane,
+Rods...Rings,
+Vesicles,
+InGiwonsList,Gene is in Giwon's list
+HGNC_ID,
+OMIM_phenotype,
+Robi_list,Gene is in Rob Mitra's list 
+Jeff_list,Gene is in Jeff Milbrandt's list
+iPSC_availability,
+ClinVar_RefSeq,
+HSP.Disease.Designation,
+HSP.Disease,
+CMT.Disease,
+CMT.Disease.detail,
+OMIM_parsed,
+Straggler.Disease.Association,
+Curated.Disease.Association,
+Curated.Disease.Association.Category,
+ALS,Gene is associated with ALS - Amyotrophic Lateral Sclerosis
+Axonal.CMT,Gene is associated with Axonal Charcot-Marie-Tooth Disease
+Demyelinating.CMT,Gene is associated with Demyelinating Charcot-Marie-Tooth Disease
+dHMN,Gene is associated with Distal Hereditary Motor Neuropathy
+HSP,
+juvenile.ALS,Gene is associated with juvenile ALS
+SMA,Gene is associated with Spinam Muscular Atrophy
+SCA,Gene is associated with Spinocerebellar Ataxia
+Alzheimer,Gene is associated with Alzheimer's disease
+Parkinson,Gene is associated with Parkinson's disease
+Diabetes,Gene is associated with Diabetes's disease
+Cancer_related,Gene is related to cancer
+Not.Disease.Tagged.HPA,
+Other.Disease.HPA,
+NDD.count,Number of neurodegenerative diseases the gene is associated with

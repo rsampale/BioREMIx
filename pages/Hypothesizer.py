@@ -81,7 +81,12 @@ if st.session_state['authenticated']:
         file_name=colmeta_file_name,
         mime="text/plain"
     )
-    ### ACTUALLY USE THE COLMETA - tbd 
+    ### ACTUALLY USE THE COLMETA - tbd
+    colmeta_df = pd.read_csv(colmeta_file_name)
+    colmeta_df['Description'].fillna(colmeta_df['Colname'], inplace=True) # if blank, just use the colname as the description
+    colmeta_dict = pd.Series(colmeta_df['Description'].values, index=colmeta_df['Colname']).to_dict()
+    if 'colmeta_dict' not in st.session_state:
+        st.session_state['colmeta_dict'] = colmeta_dict
     
     genes_df = pd.read_csv(file_name)
     genes_df.columns = genes_df.columns.str.replace('.', '_')
@@ -105,7 +110,7 @@ if st.session_state['authenticated']:
     if st.session_state['refine_section_visible']:
         st.title("Hypothesis Formulation Tool")
         st.divider()
-        
+
         if not st.session_state['user_researchquestion']:
             # FIND COLUMNS RELEVANT TO HYPOTHESIS - MAYBE ADD AS AN OPTION LATER (AND KEEP ALL BY DEFAULT)
             st.header("Develop your search space",divider='green')
@@ -129,15 +134,17 @@ if st.session_state['authenticated']:
             "Here is a list of column names in a dataframe: {col_names}"
             "The columns hold information relating to gene names, disease associations, biological processes, and much more"
             "Some names contain acronyms. Try to decode these remembering that this is a biological/genetic dataset"
-            "Explanations of some acronyms: HPA = Human protein atlas, "
+            "Consult the following dictionary to understand the meanings of columns you initially do not understand: {colmeta_dict}\n"
             "Here is the user's research question or hypothesis: {query}"
             "Using this query and the list of column names, select any column names you think might be relevant to their question or future analysis"
             "Return the column names relevant to the query in a list format. Remember, it is better to give more columns than necessary than to give not enough."
+            "To do this, it may actually be easier to think which to exclude because they are most likely irrelevant. For example, you may almost always"
+            "want to include localization or expression columns because those can be very useful for answering future questions the user may have."
             "Format instructions: Return ONLY a list in the format 'col1,col2,col3' (without the quotes, and with no brackets or anything)"
             )
     
             chain = prompt | llm 
-            parser_output = chain.invoke({"query": st.session_state['user_researchquestion'], "col_names": possible_columns})
+            parser_output = chain.invoke({"query": st.session_state['user_researchquestion'], "col_names": possible_columns,"colmeta_dict": colmeta_dict})
             # st.write(parser_output)
             colnames_list = parser_output.content.split(",")
             # st.write(colnames_list)
@@ -175,7 +182,7 @@ if st.session_state['authenticated']:
                     include_df_in_prompt=True,
                     number_of_head_rows=10
                 )
-                pd_df_agent.handle_parsing_errors = True
+                pd_df_agent.handle_parsing_errors = "Check your output and make sure it conforms, use the Action Input/Final Answer syntax"
                 full_prompt = st.session_state['user_refinement_q'] + ". Your response should just be the pandas expression required to achieve this. Do not include code formatting markers like backticks. E.g. you might return df_y = dfx[dfx['blah'] == 'foo']"
                 response = pd_df_agent.run(full_prompt)
                 # response = pd_df_agent.run(st.session_state['user_refinement_q'])
