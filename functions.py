@@ -1,5 +1,7 @@
 import streamlit as st
 import time
+import ast
+import matplotlib.pyplot as plt
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain.callbacks import StreamlitCallbackHandler
 
@@ -80,7 +82,32 @@ def analyze_buttonclick():
     st.session_state['data_chat'] = False
     st.session_state['analyze_data'] = True
 
+def toggle_vizdict_build():
+    st.session_state['viz_dict_create'] = False
 
+def build_graph(name, desc, llm):
+    prompt = f"""
+    Here is a chart or visualization: {name}.
+    Here is a brief and general description of what the chart could look like or compare: {desc}.
+    Format instructions: ONLY return the matplotlib/python code required to create this graph (using the df provided). 
+    Do not include ANYTHING that is not code. 
+    Do not include code formatting markers like backticks.
+    """
+    df_agent = create_pandas_dataframe_agent(
+        llm=llm,
+        df=st.session_state['user_refined_df'],
+        agent_type="tool-calling", 
+        verbose=True,
+        allow_dangerous_code=True,
+        include_df_in_prompt=True,
+        number_of_head_rows=10
+    )
+    df_agent.handle_parsing_errors = "Check your output and make sure it follows the format instructions precisely. Use the Action Input/Final Answer syntax"
+
+    response = df_agent.run(prompt)
+
+    return response
+    
 
 def repeat_refinement(llm):
     if 'input_text' not in st.session_state:
@@ -182,20 +209,51 @@ def analyze_data(llm):
     st.divider()
     st.subheader("Here are some suggested visualizations that might be of use to you:")
 
-    prompt = f"""
-    Consult your dataframe 'df' and user research question. Your goal is to suggest visualizations, graphs, charts, etc. to guide their research question and objectives.
-    User research objective: {st.session_state.user_researchquestion}\n
-    Output format instructions: A dictionary of the graph type or name as the key, and a more detailed description of this graph/visualization as the value. Include a maximum of 5 different visualizations.
-    Always include a final key-value pair that is 'I have my own idea':'User will give their own graph suggestion'\n
-    DO NOT FORGET THE PROPER DICTIONARY OUTPUT FORMAT.
-    """
-    viz_pandas_agent = create_pandas_dataframe_agent(
-        llm=llm,
-        df=st.session_state['user_refined_df'],
-        agent_type="tool-calling",
-        allow_dangerous_code=True,
-        include_df_in_prompt=True,
-        number_of_head_rows=20
-    )
-    viz_dict_response = viz_pandas_agent.run(prompt)
-    st.write(viz_dict_response)
+    if 'viz_dict_create' not in st.session_state:
+        st.session_state['viz_dict_create'] = True
+
+    # Only build the dictionary of button names once
+    if st.session_state.viz_dict_create:
+        prompt = f"""
+        Consult your dataframe 'df' and user research question. Your goal is to suggest visualizations, graphs, charts, etc. to guide their research question and objectives.
+        User research objective: {st.session_state.user_researchquestion}\n
+        Output format instructions: A dictionary of the graph type or name as the key, and a more detailed description of this graph/visualization as the value. Include a maximum of 5 different visualizations.
+        The graphs or charts must be able to be constructed from existing df columns.
+        Always include a final key-value pair that is 'I have my own idea':'User will give their own graph suggestion'\n
+        Make sure there are no formatting characters like backticks in your response.
+        """
+        viz_pandas_agent = create_pandas_dataframe_agent(
+            llm=llm,
+            df=st.session_state['user_refined_df'],
+            agent_type="tool-calling",
+            allow_dangerous_code=True,
+            include_df_in_prompt=True,
+            number_of_head_rows=20
+        )
+        viz_pandas_agent.handle_parsing_errors = "Check your output and make sure it conforms to the instructions given, use the Action Input/Final Answer syntax"
+        viz_dict_response = viz_pandas_agent.run(prompt)
+        viz_dict_response = ast.literal_eval(viz_dict_response) # converts llm response (string) into the dictionary literal
+
+        # Store dictionary to session state to avoid rebuilding it every time the page re-runs:
+        if 'viz_dict' not in st.session_state:
+            st.session_state['viz_dict'] = viz_dict_response
+
+    st.write(st.session_state['viz_dict'])
+    chart_names = list(st.session_state['viz_dict'].keys())
+    chart_descriptions = list(st.session_state['viz_dict'].values())
+
+    cols = st.columns(len(st.session_state['viz_dict'])-1) 
+    for i, col in enumerate(cols):
+        with col:
+            if st.button(chart_names[i],use_container_width=True,on_click=toggle_vizdict_build):
+                llm_graph_output = build_graph(chart_names[i],chart_descriptions[i],llm)
+                reformatted_graph_code = llm_graph_output.replace("df", "st.session_state['user_refined_df']")
+                reformatted_graph_code = reformatted_graph_code.rstrip('`') # remove code backticks left over
+                st.write(reformatted_graph_code)
+                exec(reformatted_graph_code, globals())
+                st.pyplot(plt)
+    # Always have a 6th button that lets user suggest their own visualization
+    make_own_placeholder = st.empty()
+    with make_own_placeholder:
+        if st.button(chart_names[-1],use_container_width=True,on_click=toggle_vizdict_build):
+            st.write("pog")
