@@ -3,7 +3,7 @@ from functions import *
 import pandas as pd
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
-from langchain_experimental.agents import create_pandas_dataframe_agent
+from langchain_experimental.agents import create_pandas_dataframe_agent # deprecated
 
 mgi_icon = "images/the_elizabeth_h_and_james_s_mcdonnell_genome_institute_logo.jpg"
 st.logo(mgi_icon, size='large')
@@ -83,7 +83,7 @@ if st.session_state['authenticated']:
     )
     ### ACTUALLY USE THE COLMETA - tbd
     colmeta_df = pd.read_csv(colmeta_file_name)
-    colmeta_df['Description'].fillna(colmeta_df['Colname'], inplace=True) # if blank, just use the colname as the description
+    colmeta_df['Description'] = colmeta_df['Description'].fillna(colmeta_df['Colname']) # if blank, just use the colname as the description, NOTE MIGHT BREAK IN PANDAS 3
     colmeta_dict = pd.Series(colmeta_df['Description'].values, index=colmeta_df['Colname']).to_dict()
     if 'colmeta_dict' not in st.session_state:
         st.session_state['colmeta_dict'] = colmeta_dict

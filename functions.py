@@ -89,9 +89,10 @@ def build_graph(name, desc, llm):
     prompt = f"""
     Here is a chart or visualization: {name}.
     Here is a brief and general description of what the chart could look like or compare: {desc}.
-    Format instructions: ONLY return the matplotlib/python code required to create this graph (using the df provided). 
-    Do not include ANYTHING that is not code. 
-    Do not include code formatting markers like backticks.
+    Format instructions: Return ONLY the matplotlib/python code required to create this graph from the dataframe you are given.
+    Do not create a new dataframe, and instead access the df you are given for data.
+    Do not include ANYTHING that is not code (subtitles, descriptions, comments, etc.). 
+    Do not include any formatting characters (i.e. backticks) in your response. Just plain text.
     """
     df_agent = create_pandas_dataframe_agent(
         llm=llm,
@@ -141,7 +142,7 @@ def repeat_refinement(llm):
         # st.write(response)
         pandas_code_only = response.split('=', 1)[1] # keep only the pandas expression not the variable assignment
         pandas_code_only = pandas_code_only.replace("df", "st.session_state['user_refined_df']")
-        pandas_code_only = pandas_code_only.rstrip('`') # remove code backticks left over
+        pandas_code_only.replace("```", "").strip() # remove code backticks left over
         # st.write(f"Code to be evaluated:{pandas_code_only}")
         user_refined_df = eval(pandas_code_only)
         st.session_state['user_refined_df'] = user_refined_df
@@ -215,12 +216,13 @@ def analyze_data(llm):
     # Only build the dictionary of button names once
     if st.session_state.viz_dict_create:
         prompt = f"""
-        Consult your dataframe 'df' and user research question. Your goal is to suggest visualizations, graphs, charts, etc. to guide their research question and objectives.
+        You will be given a dataframe 'df' and user research question. Your goal is to suggest visualizations, graphs, charts, etc. to guide their research question and objectives.
         User research objective: {st.session_state.user_researchquestion}\n
-        Output format instructions: A dictionary of the graph type or name as the key, and a more detailed description of this graph/visualization as the value. Include a maximum of 5 different visualizations.
+        Output format instructions: A DICTIONARY of the graph type/name as the key, and a brief and non-specific description of the graph/visualization as the value. Do not reference specific columns.
+        Include a maximum of 5 different visualizations.
         The graphs or charts must be able to be constructed from existing df columns.
-        Always include a final key-value pair that is 'I have my own idea':'User will give their own graph suggestion'\n
-        Make sure there are no formatting characters like backticks in your response.
+        Always include a final key-value pair that is 'I have my own idea':'User will give their own graph suggestion'
+        Output should not have any formatting characters.\n
         """
         viz_pandas_agent = create_pandas_dataframe_agent(
             llm=llm,
@@ -228,10 +230,12 @@ def analyze_data(llm):
             agent_type="tool-calling",
             allow_dangerous_code=True,
             include_df_in_prompt=True,
-            number_of_head_rows=20
+            number_of_head_rows=10
         )
-        viz_pandas_agent.handle_parsing_errors = "Check your output and make sure it conforms to the instructions given, use the Action Input/Final Answer syntax"
+        viz_pandas_agent.handle_parsing_errors = "Check your output and make sure it conforms to the format instructions given, use the Action Input/Final Answer syntax."
         viz_dict_response = viz_pandas_agent.run(prompt)
+        viz_dict_response.replace("```", "").strip() 
+        # st.write(viz_dict_response)
         viz_dict_response = ast.literal_eval(viz_dict_response) # converts llm response (string) into the dictionary literal
 
         # Store dictionary to session state to avoid rebuilding it every time the page re-runs:
@@ -248,7 +252,7 @@ def analyze_data(llm):
             if st.button(chart_names[i],use_container_width=True,on_click=toggle_vizdict_build):
                 llm_graph_output = build_graph(chart_names[i],chart_descriptions[i],llm)
                 reformatted_graph_code = llm_graph_output.replace("df", "st.session_state['user_refined_df']")
-                reformatted_graph_code = reformatted_graph_code.rstrip('`') # remove code backticks left over
+                reformatted_graph_code.replace("```", "").strip() # remove code backticks left over
                 st.write(reformatted_graph_code)
                 exec(reformatted_graph_code, globals())
                 st.pyplot(plt)
