@@ -59,7 +59,7 @@ if st.session_state['authenticated']:
     st.sidebar.divider()
     
     ## COLUMN NAME INFORMATION DATAFRAME UPLOAD ON SIDEBAR
-    default_colmeta_filename = "data/240814_DiseaseGene_colmetadata.csv"
+    default_colmeta_filename = "data/240814_DiseaseGene_colmetadata_AFannotated.csv"
     with open(default_colmeta_filename, 'r') as file:
         default_colmeta_content = file.read()
  
@@ -83,6 +83,8 @@ if st.session_state['authenticated']:
     )
     ### ACTUALLY USE THE COLMETA - tbd
     colmeta_df = pd.read_csv(colmeta_file_name)
+    # if "Drop.Column" in colmeta_df.columns: # FILTERS OUT 'reduntant' COLS AS DETERMINED BY AF
+    #     colmeta_df = colmeta_df[colmeta_df["Drop.Column"] != 'yes']
     colmeta_df['Description'] = colmeta_df['Description'].fillna(colmeta_df['Colname']) # if blank, just use the colname as the description, NOTE MIGHT BREAK IN PANDAS 3
     colmeta_dict = pd.Series(colmeta_df['Description'].values, index=colmeta_df['Colname']).to_dict()
     if 'colmeta_dict' not in st.session_state:
@@ -100,7 +102,9 @@ if st.session_state['authenticated']:
     if 'user_refinement_q' not in st.session_state:
         st.session_state['user_refinement_q'] = None
 
-    llm = ChatOpenAI(temperature=0, model='gpt-4o', openai_api_key=OPENAI_API_KEY)
+    llm_4o = ChatOpenAI(temperature=0, model='gpt-4o-2024-11-20', openai_api_key=OPENAI_API_KEY)
+    llm_o1mini = ChatOpenAI(temperature=1,model='o1-mini', openai_api_key=OPENAI_API_KEY)
+    llm_o1prev = ChatOpenAI(temperature=1,model='o1-preview', openai_api_key=OPENAI_API_KEY)
 
     # PAGE FORMAT CODE START
     # Make into invisible container so it can be hidden with appropriate buttons?
@@ -129,21 +133,23 @@ if st.session_state['authenticated']:
         if st.session_state['user_researchquestion']:
             possible_columns = list(genes_df.columns)
             # set up prompt:
-            prompt = PromptTemplate(
-            template=
-            "Here is a list of column names in a dataframe: {col_names}"
-            "The columns hold information relating to gene names, disease associations, biological processes, and much more"
-            "Some names contain acronyms. Try to decode these remembering that this is a biological/genetic dataset"
-            "Consult the following dictionary to understand the meanings of columns you initially do not understand: {colmeta_dict}\n"
-            "Here is the user's research question or hypothesis: {query}"
-            "Using this query and the list of column names, select any column names you think might be relevant to their question or future analysis"
-            "Return the column names relevant to the query in a list format. Remember, it is better to give more columns than necessary than to give not enough."
-            "To do this, it may actually be easier to think which to exclude because they are most likely irrelevant. For example, you may almost always"
-            "want to include localization or expression columns because those can be very useful for answering future questions the user may have."
-            "Format instructions: Return ONLY a list in the format 'col1,col2,col3' (without the quotes, and with no brackets or anything)"
+            prompt = PromptTemplate( # Can improve prompt and use o1 preview with it soon
+            template= """
+            - Here is a list of column names in a dataframe: {col_names}
+            - The columns hold information relating to gene names, disease associations, biological processes, and much more.
+            - Some names contain acronyms. Try to decode these remembering that this is a biological/genetic dataset.
+            - Consult the following dictionary to understand the meanings of columns you initially do not understand: {colmeta_dict}\n
+            - Here is the user's research question or hypothesis: {query}
+            Instructions:
+            - Using the query and the list of column names, select any column names you think might be relevant to their question or future analysis
+            - Return only the column names relevant to the query in a list format. Remember, it is better to give more columns than necessary than to give not enough.
+            To do this, it may actually be easier to think which to exclude because they are most likely irrelevant. For example, you may almost always
+            want to include localization or expression columns because those can be very useful for answering future questions the user may have.
+            Format instructions: Return ONLY a list in the format 'col1,col2,col3' (without the quotes, and with no brackets or anything)
+            """
             )
     
-            chain = prompt | llm 
+            chain = prompt | llm_4o 
             parser_output = chain.invoke({"query": st.session_state['user_researchquestion'], "col_names": possible_columns,"colmeta_dict": colmeta_dict})
             # st.write(parser_output)
             colnames_list = parser_output.content.split(",")
@@ -162,28 +168,27 @@ if st.session_state['authenticated']:
                 st.write("**Your Data Refinement Query:** ",st.session_state['user_refinement_q'])
 
             if st.session_state['user_refinement_q']:
-                additional_prefix = """
-                    Instructions: A user will give you a refining statement. By looking at the column names, rows, and cell values in the dataframe provided,
-                    you will try and filter the dataframe to match their specifications. Pay attention to this specific dataframe
-                    and make sure to use column names etc. that are real and relevant. User specification:\n
-                """
-                additional_suffix = """
-                    \n Additional instructions: ONLY Give me the pandas operation/code to retrieve the relevant columns
-                    with no additional quotes or formatting (i.e. backticks for code blocks).
-                """
                 pd_df_agent = create_pandas_dataframe_agent(
-                    llm=llm,
+                    llm=llm_4o,
                     df=st.session_state['relevant_cols_only_df'],
                     # agent_type="tool-calling", # can also be others like 'openai-tools' or 'openai-functions'
                     verbose=True,
-                    allow_dangerous_code=True,
-                    # prefix=additional_prefix,
-                    # suffix=additional_suffix, # AS SOON AS YOU ADD A SUFFIX IT GETS CONFUSED ABOUT THE ACTUAL COL NAMES. DOES NOT SEEM TO BE IN THE SAME CONTEXT. 
+                    allow_dangerous_code=True, 
                     include_df_in_prompt=True,
                     number_of_head_rows=10
                 )
                 pd_df_agent.handle_parsing_errors = "Check your output and make sure it conforms, use the Action Input/Final Answer syntax"
-                full_prompt = st.session_state['user_refinement_q'] + ". Your response should just be the pandas expression required to achieve this. Do not include code formatting markers like backticks. E.g. you might return df_y = dfx[dfx['blah'] == 'foo']"
+                full_prompt = f"""
+                User refining statement: {st.session_state['user_refinement_q']}
+                Instructions: 
+                - Given the user refinement statement above and the dataframe you were given, return the pandas expression required to achieve this.
+                - Return only the code in your reply
+                - Do not include any additional formatting, such as markdown code blocks
+                - For formatting, use four space tabs, and do not allow any lines of code to exceed 80 columns
+                - Example: E.g. you might return df_y = dfx[dfx['blah'] == 'foo']
+                """
+                # blah = pd_df_agent.aprep_inputs
+                # print(blah)
                 response = pd_df_agent.run(full_prompt)
                 # response = pd_df_agent.run(st.session_state['user_refinement_q'])
                 # st.write(response) # FOR DEBUGGING LLM OUTPUT
@@ -218,13 +223,13 @@ if st.session_state['authenticated']:
         ### REPEAT REFINEMENT: 
         
         if st.session_state['do_refine_loop']:
-            repeat_refinement(llm=llm)
+            repeat_refinement(llm=llm_4o)
 
         if st.session_state['data_chat']:
-            chat_with_data(llm=llm)
+            chat_with_data(llm=llm_4o)
 
         if st.session_state['analyze_data']:
-            analyze_data(llm=llm)
+            analyze_data(llm=llm_4o)
 
         left_col, right_col = st.columns(2)
         chat_button_ph = st.empty()
