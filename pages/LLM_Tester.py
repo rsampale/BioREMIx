@@ -39,7 +39,6 @@ if st.session_state['authenticated']:
     # template for prompt 
     health_template = """ 
     Task: Respond to the users questions as a pirate. Responses should not lose information, but should be spoken using 'pirate-speech'
-    Format: markdown; **include ```LLM Response``` headings**
 
     {history}
     User: {human_input}

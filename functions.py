@@ -4,7 +4,7 @@ import ast
 import matplotlib.pyplot as plt
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_core.prompts import PromptTemplate
-from langchain.callbacks import StreamlitCallbackHandler
+from langchain.callbacks import StreamlitCallbackHandler # deprecated
 
 def authenticate():
     # placeholders variables for UI 
@@ -49,14 +49,14 @@ def authenticate():
                         st.error("❌ Incorrect Password. Please Try Agian.")
                         
 
-def clear_session_state_except_password():
+def reboot_hypothesizer():
     # Make a copy of the session_state keys
     keys = list(st.session_state.keys())
             
     # Iterate over the keys
     for key in keys:
         # If the key is not 'authenticated', delete it from the session_state
-        if key != 'authenticated':
+        if key not in ['authenticated','genes_info_df','genes_colmeta_dict']:
             del st.session_state[key]
             
 def refineloop_buttonclick(): # SHOULD MAKE THESE JUST TOGGLE MAYBE INSTEAD OF HARDCODING TRUE OR FALSE
@@ -191,10 +191,15 @@ def chat_with_data(llm):
     If you do not understand the meaning of a column by its name, consult the following 
     dictionary for column names and their descriptions: {st.session_state.colmeta_dict}
     """
+    begeneral_prefix = """If the user is asking a specific question that can be answered from the df given to you, do so. Otherwise if they seem to be asking 
+    a more general question about a gene, possible associations, biological process, etc. just use your internal knowledge. You can also mix the two sources of info,
+    but then be clear where you are getting your information from.
+    """
 
     non_toolcalling_agent = create_pandas_dataframe_agent(
         llm=llm,
         df=st.session_state['user_refined_df'],
+        prefix=begeneral_prefix,
         allow_dangerous_code=True,
         include_df_in_prompt=True,
         number_of_head_rows=20
@@ -203,7 +208,7 @@ def chat_with_data(llm):
     pd_df_agent = create_pandas_dataframe_agent(
         llm=llm,
         df=st.session_state['user_refined_df'],
-        # prefix=prefix, # Putting the prefix here makes each query too long, because it tacks it on every time - find a way to load it into memory
+        prefix=begeneral_prefix,
         agent_type="tool-calling",
         allow_dangerous_code=True,
         include_df_in_prompt=True,
@@ -225,7 +230,7 @@ def chat_with_data(llm):
     with st.chat_message("assistant"):
         # st.write(len(st.session_state.messages)) # is 1 before user provides anything
         if len(st.session_state.messages) > 1:
-            st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False,max_thought_containers=2)
+            st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False,max_thought_containers=5)
             try:
                 response = non_toolcalling_agent.run(st.session_state.messages, callbacks=[st_cb]) 
             except:

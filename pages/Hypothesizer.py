@@ -1,9 +1,10 @@
 import streamlit as st
+import default_data
 from functions import *
 import pandas as pd
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
-from langchain_experimental.agents import create_pandas_dataframe_agent # deprecated
+from langchain_experimental.agents import create_pandas_dataframe_agent 
 
 mgi_icon = "images/the_elizabeth_h_and_james_s_mcdonnell_genome_institute_logo.jpg"
 st.logo(mgi_icon, size='large')
@@ -25,74 +26,11 @@ if st.session_state['authenticated']:
         raise ValueError("OpenAI API key is not set. Please set the OPENAI_API_KEY environment variable.")
     # set up memory?
  
-    st.sidebar.button("Reboot Session", on_click=clear_session_state_except_password,use_container_width=True)
+    st.sidebar.button("Reboot Session", on_click=reboot_hypothesizer,use_container_width=True)
 
 
-
-    # Initialize csv/dataframe being searched and manipulated - display it in the sidebar at all times for download and info
     if 'refine_section_visible' not in st.session_state:
         st.session_state['refine_section_visible'] = True
-
-    ## MAIN DATAFRAME UPLOAD ON SIDEBAR:
-    default_allgenes_filename = "data/241016_DiseaseGene_Localization.csv"
-    with open(default_allgenes_filename, 'r') as file:
-        default_allgenes_content = file.read()
-
-    uploaded_file = st.sidebar.file_uploader("Upload your own **gene-metadata matrix**", type=["txt", "csv", "json"])
-    if uploaded_file is not None:
-        # Use uploaded file's name and content
-        file_name = uploaded_file.name
-        file_content = uploaded_file.read()
-    else:
-        # Use default file if no file is uploaded
-        file_name = default_allgenes_filename
-        file_content = default_allgenes_content
-    # Display the file name and download button in the sidebar
-
-    st.sidebar.write(f"**Currently Selected File Name:** {file_name}")
-    st.sidebar.download_button(
-        label="Download Genes Data File",
-        data=file_content,
-        file_name=file_name,
-        mime="text/plain"
-    )
-    st.sidebar.divider()
-    
-    ## COLUMN NAME INFORMATION DATAFRAME UPLOAD ON SIDEBAR
-    default_colmeta_filename = "data/240814_DiseaseGene_colmetadata_AFannotated.csv"
-    with open(default_colmeta_filename, 'r') as file:
-        default_colmeta_content = file.read()
- 
-    uploaded_colmeta_file = st.sidebar.file_uploader("Upload your own **column-name metadata matrix**", type=["txt", "csv", "json"])
-    if uploaded_colmeta_file is not None:
-        # Use uploaded file's name and content
-        colmeta_file_name = uploaded_colmeta_file.name
-        colmeta_file_content = uploaded_colmeta_file.read()
-    else:
-        # Use default file if no file is uploaded
-        colmeta_file_name = default_colmeta_filename
-        colmeta_file_content = default_colmeta_content
-    # Display the file name and download button in the sidebar
-
-    st.sidebar.write(f"**Currently Selected Metadata File Name:** {colmeta_file_name}")
-    st.sidebar.download_button(
-        label="Download Column Metadata File",
-        data=colmeta_file_content,
-        file_name=colmeta_file_name,
-        mime="text/plain"
-    )
-    ### ACTUALLY USE THE COLMETA - tbd
-    colmeta_df = pd.read_csv(colmeta_file_name)
-    # if "Drop.Column" in colmeta_df.columns: # FILTERS OUT 'reduntant' COLS AS DETERMINED BY AF
-    #     colmeta_df = colmeta_df[colmeta_df["Drop.Column"] != 'yes']
-    colmeta_df['Description'] = colmeta_df['Description'].fillna(colmeta_df['Colname']) # if blank, just use the colname as the description, NOTE MIGHT BREAK IN PANDAS 3
-    colmeta_dict = pd.Series(colmeta_df['Description'].values, index=colmeta_df['Colname']).to_dict()
-    if 'colmeta_dict' not in st.session_state:
-        st.session_state['colmeta_dict'] = colmeta_dict
-    
-    genes_df = pd.read_csv(file_name)
-    genes_df.columns = genes_df.columns.str.replace('.', '_')
-
     if 'user_researchquestion' not in st.session_state:
         st.session_state['user_researchquestion'] = None
     if 'relevant_cols_only_df' not in st.session_state:
@@ -131,7 +69,7 @@ if st.session_state['authenticated']:
                 st.markdown("Please provide a research quesiton/hypothesis to proceed.")
 
         if st.session_state['user_researchquestion']:
-            possible_columns = list(genes_df.columns)
+            possible_columns = list(st.session_state.genes_info_df.columns)
             # set up prompt:
             prompt = PromptTemplate( # Can improve prompt and use o1 preview with it soon
             template= """
@@ -150,11 +88,11 @@ if st.session_state['authenticated']:
             )
     
             chain = prompt | llm_4o 
-            parser_output = chain.invoke({"query": st.session_state['user_researchquestion'], "col_names": possible_columns,"colmeta_dict": colmeta_dict})
+            parser_output = chain.invoke({"query": st.session_state['user_researchquestion'], "col_names": possible_columns,"colmeta_dict": st.session_state.genes_colmeta_dict})
             # st.write(parser_output)
             colnames_list = parser_output.content.split(",")
             # st.write(colnames_list)
-            relevant_cols_only_df = genes_df[colnames_list]
+            relevant_cols_only_df = st.session_state.genes_info_df[colnames_list]
             st.session_state['relevant_cols_only_df'] = relevant_cols_only_df
             st.dataframe(st.session_state['relevant_cols_only_df'])
 
