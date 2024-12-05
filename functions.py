@@ -2,6 +2,8 @@ import streamlit as st
 import time
 import ast
 import matplotlib.pyplot as plt
+import requests
+from openai import OpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_core.prompts import PromptTemplate
 from langchain.callbacks import StreamlitCallbackHandler # deprecated
@@ -18,15 +20,12 @@ def authenticate():
     if not st.session_state['authenticated']:
         # UI for authentication
         with title_placeholder:
-            st.title("👋 Welcome to BioREMIx")
+            st.title("Welcome to BioREMIx")
         with help_placeholder:
             with st.expander("**⚠️ Read if You Need Help With Password**"):
                 st.write("To request or get an updated password contact developers.")
             
-                st.write("""
-**Remi Sampaleanu**
-             
-             remi@wustl.edu""")
+                st.write("**Remi Sampaleanu** remi@wustl.edu")
             # UI and get get user password
             with password_input_placeholder:
                 user_password = st.text_input("Enter the application password:", type="password", key="pwd_input")
@@ -56,7 +55,7 @@ def reboot_hypothesizer():
     # Iterate over the keys
     for key in keys:
         # If the key is not 'authenticated', delete it from the session_state
-        if key not in ['authenticated','genes_info_df','genes_colmeta_dict']:
+        if key not in ['authenticated','genes_info_df','genes_colmeta_dict','colmeta_dict']:
             del st.session_state[key]
             
 def refineloop_buttonclick(): # SHOULD MAKE THESE JUST TOGGLE MAYBE INSTEAD OF HARDCODING TRUE OR FALSE
@@ -89,9 +88,12 @@ def build_graph(name, desc, llm):
     Here is a chart or visualization: {name}.
     Here is a brief and general description of what the chart could look like or compare: {desc}.
     Format instructions: Return ONLY the matplotlib/python code required to create this graph from the dataframe you are given.
+    Keep in mind some column values may be comma delimited and contain multiple values.
     Do not create a new dataframe, and instead access the df you are given for data.
     Important: Do not include ANYTHING that is not code (subtitles, descriptions, instructions, comments, etc.). 
     Do not include any formatting characters (i.e. backticks) in your response. Just plain text.
+    Never create new variable names with periods in them.
+    Never create new variables containing 'df' in their names, or directly modify the original df.
     """
     df_agent = create_pandas_dataframe_agent(
         llm=llm,
@@ -112,9 +114,10 @@ def create_viz_dict(llm): # Creates the visualization dictionary and stores the 
     prompt = f"""
     You will be given a dataframe 'df' and user research question. Your goal is to suggest visualizations, graphs, charts, etc. to guide their research question and objectives.
     User research objective: {st.session_state.user_researchquestion}\n
-    Output format instructions: A DICTIONARY of the graph type/name as the key, and a one or two line description of the graph/visualization as the value. Do not reference specific columns.
+    Description of column names: {st.session_state.genes_colmeta_dict}\n
+    Output format instructions: A DICTIONARY of the graph type/name as the key, and a one or two line description of the graph/visualization as the value.
     Include a maximum of 5 different visualizations.
-    The graphs or charts must be able to be constructed from existing df columns.
+    The graphs or charts must be able to be constructed from existing df columns. Keep in mind some column values may be comma delimited and contain multiple values.
     Always include a final key-value pair that is 'I have my own idea':'User will give their own graph suggestion'
     Output should not have any formatting characters.\n
     """
@@ -166,6 +169,7 @@ def repeat_refinement(llm):
                 User refining statement: {st.session_state['user_refinement_q']}
                 Instructions: 
                 - Given the user refinement statement above and the dataframe you were given, return the pandas expression required to achieve this.
+                - Keep in mind some column values may be comma or otherwise delimited and contain multiple values.
                 - Return only the code in your reply
                 - Do not include any additional formatting, such as markdown code blocks
                 - For formatting, use four space tabs, and do not allow any lines of code to exceed 80 columns
@@ -186,15 +190,19 @@ def repeat_refinement(llm):
     st.dataframe(st.session_state['user_refined_df'])
 
 def chat_with_data(llm):
+    
+    PERPLEXITY_API_KEY = st.secrets["PERPLEXITY_API_KEY"]
+    if not PERPLEXITY_API_KEY:
+        raise ValueError("Perplexity API key is not set. Please set the PERPLEXITY_API_KEY environment variable.")
+    perplex_client = OpenAI(api_key=PERPLEXITY_API_KEY, base_url="https://api.perplexity.ai")
 
-    prefix = f"""
-    If you do not understand the meaning of a column by its name, consult the following 
-    dictionary for column names and their descriptions: {st.session_state.colmeta_dict}
-    """
-    begeneral_prefix = """If the user is asking a specific question that can be answered from the df given to you, do so. Otherwise if they seem to be asking 
+    begeneral_prefix = """If the user is asking a specific question that can be answered from the df given to you, do so. Keep in mind some column values may actually be
+    delimited lists or contain multiple values. If the user seems to be asking 
     a more general question about a gene, possible associations, biological process, etc. just use your internal knowledge. You can also mix the two sources of info,
-    but then be clear where you are getting your information from.
+    but then be clear where you are getting your information from. Try to keep responses relatively short unless asked for more information or told otherwise.
     """
+
+    online_search = st.sidebar.toggle("Toggle Perplexity Online Search")
 
     non_toolcalling_agent = create_pandas_dataframe_agent(
         llm=llm,
@@ -214,13 +222,13 @@ def chat_with_data(llm):
         include_df_in_prompt=True,
         number_of_head_rows=20
     )
-    pd_df_agent.handle_parsing_errors = True
 
     if "messages" not in st.session_state or st.sidebar.button("Clear chat history",use_container_width=True):
-        st.session_state["messages"] = [{"role": "assistant", "content": "What are you interested in discovering about the data?"}]
+        st.session_state["messages"] = [{"role": "system", "content": "You are an AI assistant tasked to help a user gain insights from their data, and answer any of their questions."}]
     
     for msg in st.session_state.messages:
-        st.chat_message(msg["role"]).write(msg["content"])
+        if msg["role"] != "system":
+            st.chat_message(msg["role"]).write(msg["content"])
 
     if prompt := st.chat_input(placeholder="What is this data about?"):
         # Tack on instructions to the beginning of prompt HERE
@@ -228,15 +236,30 @@ def chat_with_data(llm):
         st.chat_message("user").write(prompt)
 
     with st.chat_message("assistant"):
+        with st.expander("session_state.messages:",expanded=False):
+            st.write(st.session_state.messages)
         # st.write(len(st.session_state.messages)) # is 1 before user provides anything
         if len(st.session_state.messages) > 1:
-            st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False,max_thought_containers=5)
-            try:
-                response = non_toolcalling_agent.run(st.session_state.messages, callbacks=[st_cb]) 
-            except:
-                response = pd_df_agent.run(st.session_state.messages, callbacks=[st_cb]) # Still can't access the internet to provide specifics on studies etc.
-            st.session_state.messages.append({"role": "assistant", "content": response})
-            st.write(response)
+            # USE INTERNET/PERPLEXITY IF TOGGLE IS ON
+            if not online_search:
+                st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False,max_thought_containers=5)
+                try:
+                    response = non_toolcalling_agent.run(st.session_state.messages, callbacks=[st_cb]) 
+                except:
+                    response = pd_df_agent.run(st.session_state.messages, callbacks=[st_cb]) # Still can't access the internet to provide specifics on studies etc.
+                st.session_state.messages.append({"role": "assistant", "content": response})
+                st.write(response)
+            else:
+                # use perplexity for the response instead
+                if st.session_state.messages[-1]["role"] == "user": # Needs user-system alternating, only get response if last message was a user one
+                    response = perplex_client.chat.completions.create(model="llama-3.1-sonar-large-128k-online",messages=st.session_state.messages)
+                    response_content = response.choices[0].message.content
+                    st.session_state.messages.append({"role": "assistant", "content": response_content})
+                    # Add on the links when actually displaying the response:
+                    response_links = response.citations # A list of strings (links)
+                    numbered_links = "\n".join(f"{i+1}. {link}" for i, link in enumerate(response_links))
+                    final_response = f"{response_content}\n\n{numbered_links}"
+                    st.write(final_response)
 
     # Put expander with the data at the bottom:
     with st.expander("**Click to view data being referenced**"):

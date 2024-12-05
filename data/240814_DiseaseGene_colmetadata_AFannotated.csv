@@ -3,7 +3,7 @@ Gene,Gene name or symbol,,
 GOI,Gene of Interest - whether it is one of the MGI's genes of interest,,
 Localization.Simple.HPA,"Simplified categories of organelles to which encoded proteins localize according to the Human Protein Atlas, underscore delimited if there is more than one organelle in the category, or simply 'multilocalizing ",yes,redundant
 Subcellular.main.location.HPA,"The main organelles to which encoded proteins localize according to the Human Protein Atlas, comma delimited if there is more than one organelle",yes,redundant
-Subcellular.location.HPA,"All organelles to which an encoded protein localizes  given evidence from the Human Protein Atlas, comma separated ",,
+Subcellular.location.HPA,"Comma separated organelles to which an encoded protein localizes (according to the human protein atlas)",,
 MitoCarta3.0,"Equals 'Mitochondria' if there is evidence from MitoCarta3.0 that an encoded protein localizes to the mitochondria, NA otherwise",,
 MitoCarta3.0_SubMitoLocalization,"For encoded proteins that localize to the mitochondria given evidence from MitoCarta3.0, the specific location in the mitochondria the protein localizes, if known",,
 MitoCarta3.0_Evidence,"Experimental or computational sources of the evidence in MitoCarta3.0 that an encoded protein localizes to the mitochondria, comma delimited if there is more than one source of evidence",,

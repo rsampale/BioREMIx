@@ -19,12 +19,13 @@ if not st.session_state['authenticated']:
 # Show page if user is authenticated
 if st.session_state['authenticated']:
     
-    # Get API key
+    # Get API keys
     OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
-    # Check if key was retrieved 
     if not OPENAI_API_KEY:
         raise ValueError("OpenAI API key is not set. Please set the OPENAI_API_KEY environment variable.")
-    # set up memory?
+    PERPLEXITY_API_KEY = st.secrets["PERPLEXITY_API_KEY"]
+    if not PERPLEXITY_API_KEY:
+        raise ValueError("Perplexity API key is not set. Please set the PERPLEXITY_API_KEY environment variable.")
  
     st.sidebar.button("Reboot Session", on_click=reboot_hypothesizer,use_container_width=True)
 
@@ -120,6 +121,7 @@ if st.session_state['authenticated']:
                 User refining statement: {st.session_state['user_refinement_q']}
                 Instructions: 
                 - Given the user refinement statement above and the dataframe you were given, return the pandas expression required to achieve this.
+                - Keep in mind some column values may be comma or otherwise delimited and contain multiple values.
                 - Return only the code in your reply
                 - Do not include any additional formatting, such as markdown code blocks
                 - For formatting, use four space tabs, and do not allow any lines of code to exceed 80 columns
