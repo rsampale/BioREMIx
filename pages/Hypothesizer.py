@@ -1,5 +1,5 @@
 import streamlit as st
-import default_data
+from default_data import load_default_data
 from functions import *
 import pandas as pd
 from langchain_core.prompts import PromptTemplate
@@ -18,6 +18,9 @@ if not st.session_state['authenticated']:
 
 # Show page if user is authenticated
 if st.session_state['authenticated']:
+    
+    # Load the genes_info default data
+    load_default_data()
     
     # Get API keys
     OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
