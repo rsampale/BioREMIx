@@ -265,6 +265,28 @@ def chat_with_data(llm):
     with st.expander("**Click to view data being referenced**"):
         st.dataframe(st.session_state['user_refined_df'])
 
+def send_genesdata(gene_list):
+    # DDB_GENESLIST_API_URL = "https://9icpbd78nf.execute-api.us-east-1.amazonaws.com/prod"
+    DDB_GENESLIST_API_URL = "https://9icpbd78nf.execute-api.us-east-1.amazonaws.com/proxy_prod"
+    
+    payload = {
+        "values": gene_list  # Only include the values list here
+    }
+    headers = {"Content-Type": "application/json"}
+    
+    response = requests.post(f"{DDB_GENESLIST_API_URL}/store_data", json=payload, headers=headers)
+    response_json = response.json()
+    # st.write(response_json)
+    # st.write(response)
+    if response.status_code == 200:
+        session_id = response_json["session_id"]
+        # shiny_url = f"https://your-shiny-app.com/?session_id={session_id}"
+        # st.markdown(f"[Go to Shiny App]({shiny_url})")
+        st.markdown(f"WORKED: {session_id}")
+    else:
+        # st.write(response_json)
+        st.error("Failed to store data.")
+
 def analyze_data(llm):
     create_viz_dict(llm) # Make the viz dict once initially with the default research question
 
@@ -279,7 +301,7 @@ def analyze_data(llm):
     st.divider()
     st.subheader("Here are some suggested visualizations that might be of use to you:")
 
-    st.write(st.session_state['viz_dict'])
+    # st.write(st.session_state['viz_dict'])
     chart_names = list(st.session_state['viz_dict'].keys())
     chart_descriptions = list(st.session_state['viz_dict'].values())
 
@@ -306,3 +328,12 @@ def analyze_data(llm):
     with make_own_placeholder:
         if st.button(chart_names[-1],use_container_width=True):
             st.write("pog")
+            
+    st.divider()
+    
+    send_genes_placeholder = st.empty()
+    with send_genes_placeholder:
+        if st.button("Send your genes to NeuroKinex",use_container_width=True):
+            genes_list = list(st.session_state['user_refined_df']['Gene'])
+            # st.write(genes_list)
+            send_genesdata(genes_list)
