@@ -265,7 +265,9 @@ def chat_with_data(llm):
     with st.expander("**Click to view data being referenced**"):
         st.dataframe(st.session_state['user_refined_df'])
 
-def send_genesdata(gene_list):
+def send_genesdata():
+    gene_list = list(st.session_state['user_refined_df']['Gene'])
+    
     # DDB_GENESLIST_API_URL = "https://9icpbd78nf.execute-api.us-east-1.amazonaws.com/prod"
     DDB_GENESLIST_API_URL = "https://9icpbd78nf.execute-api.us-east-1.amazonaws.com/proxy_prod"
     
@@ -280,7 +282,8 @@ def send_genesdata(gene_list):
     # st.write(response)
     if response.status_code == 200:
         session_id = response_json["session_id"]
-        # shiny_url = f"https://your-shiny-app.com/?session_id={session_id}"
+        shiny_url = f"http://98.84.134.224/NeuroKinex/?session_id={session_id}"
+        st.session_state["neurokinex_url"] = shiny_url
         # st.markdown(f"[Go to Shiny App]({shiny_url})")
         st.markdown(f"WORKED: {session_id}")
     else:
@@ -334,6 +337,5 @@ def analyze_data(llm):
     send_genes_placeholder = st.empty()
     with send_genes_placeholder:
         if st.button("Send your genes to NeuroKinex",use_container_width=True):
-            genes_list = list(st.session_state['user_refined_df']['Gene'])
-            # st.write(genes_list)
-            send_genesdata(genes_list)
+            send_genesdata()
+            st.link_button(label="View Genes in NeuroKinex",url=st.session_state["neurokinex_url"],type="primary",use_container_width=True)
