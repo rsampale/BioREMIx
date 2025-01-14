@@ -8,7 +8,7 @@ st.title("Welcome to BioREMIx")
 st.divider()
 st.subheader("What is BioREMIx?")
 st.markdown("""
-            BioREMIx is an interactive data exploration platform. By leveraging Large Language Models (LLMs) and AI, we are able very effectively query genomic data and help our users formulate new hypotheses!
+            BioREMIx is an interactive data exploration platform! By leveraging Large Language Models (LLMs) and AI, we are able very effectively query genomic data and help our users formulate new hypotheses!
             
             """)
 st.subheader("How does it work?")
