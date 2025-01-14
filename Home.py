@@ -17,7 +17,7 @@ st.markdown("""
 
             1. Narrow down your search space and data (your csv), to only include columns relevant to your objectives. This significantly speeds up the following steps.
             2. Refine your data. Work with an LLM to iteratively narrow down your data to only include rows (genes) or columns that are of interest to you.
-            3. (Optional) Chat with your data. Freely question and speak with your data to find interesting trends, patterns, or genes.
-            4. Analyze your data. Get AI recommended graphs and visualizations suited to your research objectives.
+            3. Chat with your data. Freely question and speak with your data to find interesting trends, patterns, or genes.
+            4. Analyze your data. Get AI recommended graphs and visualizations suited to your research objectives, or view your genes of interest in our other tools (e.g. NeuroKinex).
             
             """)
