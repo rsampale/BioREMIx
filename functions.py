@@ -229,6 +229,7 @@ def chat_with_data(llm):
     for msg in st.session_state.messages:
         if msg["role"] != "system":
             st.chat_message(msg["role"]).write(msg["content"])
+            # writes the user's progress -S
 
     if prompt := st.chat_input(placeholder="What is this data about?"):
         # Tack on instructions to the beginning of prompt HERE
@@ -236,19 +237,18 @@ def chat_with_data(llm):
         st.chat_message("user").write(prompt)
 
     with st.chat_message("assistant"):
-        with st.expander("session_state.messages:",expanded=False):
-            st.write(st.session_state.messages)
-        # st.write(len(st.session_state.messages)) # is 1 before user provides anything
+        
         if len(st.session_state.messages) > 1:
             # USE INTERNET/PERPLEXITY IF TOGGLE IS ON
             if not online_search:
-                st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False,max_thought_containers=5)
-                try:
-                    response = non_toolcalling_agent.run(st.session_state.messages, callbacks=[st_cb]) 
-                except:
-                    response = pd_df_agent.run(st.session_state.messages, callbacks=[st_cb]) # Still can't access the internet to provide specifics on studies etc.
-                st.session_state.messages.append({"role": "assistant", "content": response})
-                st.write(response)
+                if st.session_state.messages[-1]["role"] == "user": 
+                    st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False,max_thought_containers=5)
+                    try:
+                            response = non_toolcalling_agent.run(st.session_state.messages, callbacks=[st_cb]) 
+                    except:
+                        response = pd_df_agent.run(st.session_state.messages, callbacks=[st_cb]) # Still can't access the internet to provide specifics on studies etc.
+                    st.session_state.messages.append({"role": "assistant", "content": response})
+                    st.write(response)
             else:
                 # use perplexity for the response instead
                 if st.session_state.messages[-1]["role"] == "user": # Needs user-system alternating, only get response if last message was a user one
@@ -261,9 +261,13 @@ def chat_with_data(llm):
                     final_response = f"{response_content}\n\n{numbered_links}"
                     st.write(final_response)
 
+        with st.expander("session_state.messages:",expanded=False):
+                st.write(st.session_state.messages)
+        # st.write(len(st.session_state.messages)) # is 1 before user provides anything
+
     # Put expander with the data at the bottom:
     with st.expander("**Click to view data being referenced**"):
-        st.dataframe(st.session_state['user_refined_df'])
+        st.dataframe(st.session_state['user_restrfined_df'])
 
 def send_genesdata():
     gene_list = list(st.session_state['user_refined_df']['Gene'])
