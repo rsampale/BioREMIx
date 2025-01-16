@@ -238,6 +238,10 @@ def chat_with_data(llm):
 
     with st.chat_message("assistant"):
         
+        with st.expander("session_state.messages:",expanded=False):
+                st.write(st.session_state.messages)
+        # st.write(len(st.session_state.messages)) # is 1 before user provides anything
+
         if len(st.session_state.messages) > 1:
             # USE INTERNET/PERPLEXITY IF TOGGLE IS ON
             if not online_search:
@@ -260,10 +264,6 @@ def chat_with_data(llm):
                     numbered_links = "\n".join(f"{i+1}. {link}" for i, link in enumerate(response_links))
                     final_response = f"{response_content}\n\n{numbered_links}"
                     st.write(final_response)
-
-        with st.expander("session_state.messages:",expanded=False):
-                st.write(st.session_state.messages)
-        # st.write(len(st.session_state.messages)) # is 1 before user provides anything
 
     # Put expander with the data at the bottom:
     with st.expander("**Click to view data being referenced**"):
