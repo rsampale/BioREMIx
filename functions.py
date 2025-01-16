@@ -267,7 +267,7 @@ def chat_with_data(llm):
 
     # Put expander with the data at the bottom:
     with st.expander("**Click to view data being referenced**"):
-        st.dataframe(st.session_state['user_restrfined_df'])
+        st.dataframe(st.session_state['user_refined_df'])
 
 def send_genesdata():
     gene_list = list(st.session_state['user_refined_df']['Gene'])
