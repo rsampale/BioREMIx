@@ -6,7 +6,7 @@ import requests
 from openai import OpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_core.prompts import PromptTemplate
-from langchain.callbacks import StreamlitCallbackHandler # deprecated
+from langchain.callbacks.streamlit import StreamlitCallbackHandler # deprecated
 
 def authenticate():
     # placeholders variables for UI 
@@ -82,6 +82,11 @@ def analyze_buttonclick():
     st.session_state['data_chat'] = False
     st.session_state['analyze_data'] = True
 
+def clear_text(text_element):
+    if text_element == 'rq_prompt':
+        st.session_state['provide_rq_text'] = ""
+    elif text_element == 'ref_prompt':
+        st.session_state['provide_refinement_text'] = ""
 
 def build_graph(name, desc, llm):
     prompt = f"""
@@ -302,7 +307,7 @@ def analyze_data(llm):
     st.write(f"**Current research question:** {st.session_state.user_researchquestion}")
 
     st.divider()
-    st.subheader("Here are some suggested visualizations that might be of use to you:")
+    st.subheader("(EXPERIMENTAL) Here are some suggested visualizations that might be of use to you:")
 
     # st.write(st.session_state['viz_dict'])
     chart_names = list(st.session_state['viz_dict'].keys())
