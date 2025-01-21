@@ -165,7 +165,7 @@ if st.session_state['authenticated']:
                 - Keep in mind some column values may be comma or otherwise delimited and contain multiple values.
                 - Return only the code in your reply
                 - Do not include any additional formatting, such as markdown code blocks or backticks (`).
-                - For formatting, use four space tabs, and do not allow any lines of code to exceed 80 columns
+                - For formatting, do not allow any lines of code to exceed 80 columns
                 - Example: E.g. you might return: df_y = dfx[dfx['blah'] == 'foo']
                 """
                 # blah = pd_df_agent.aprep_inputs
