@@ -263,11 +263,11 @@ def chat_with_data(llm):
                 if st.session_state.messages[-1]["role"] == "user": # Needs user-system alternating, only get response if last message was a user one
                     response = perplex_client.chat.completions.create(model="sonar",messages=st.session_state.messages)
                     response_content = response.choices[0].message.content
-                    st.session_state.messages.append({"role": "assistant", "content": response_content})
                     # Add on the links when actually displaying the response:
                     response_links = response.citations # A list of strings (links)
                     numbered_links = "\n".join(f"{i+1}. {link}" for i, link in enumerate(response_links))
                     final_response = f"{response_content}\n\n{numbered_links}"
+                    st.session_state.messages.append({"role": "assistant", "content": final_response})
                     st.write(final_response)
 
     # Put expander with the data at the bottom:
