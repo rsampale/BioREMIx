@@ -261,7 +261,7 @@ def chat_with_data(llm):
             else:
                 # use perplexity for the response instead
                 if st.session_state.messages[-1]["role"] == "user": # Needs user-system alternating, only get response if last message was a user one
-                    response = perplex_client.chat.completions.create(model="llama-3.1-sonar-large-128k-online",messages=st.session_state.messages)
+                    response = perplex_client.chat.completions.create(model="sonar",messages=st.session_state.messages)
                     response_content = response.choices[0].message.content
                     st.session_state.messages.append({"role": "assistant", "content": response_content})
                     # Add on the links when actually displaying the response:
