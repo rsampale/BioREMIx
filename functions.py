@@ -116,6 +116,7 @@ def undo_last_refinement(refinement):
             st.session_state.last_refinement_q = st.session_state.gene_df_history[-1][1]
 
 def build_graph(name, desc, llm):
+
     prompt = f"""
     Here is a chart or visualization: {name}.
     Here is a brief and general description of what the chart could look like or compare: {desc}.
@@ -129,7 +130,7 @@ def build_graph(name, desc, llm):
     """
     df_agent = create_pandas_dataframe_agent(
         llm=llm,
-        df=st.session_state['user_refined_df'],
+        df=st.session_state['merged_df'],
         agent_type="tool-calling", 
         verbose=True,
         allow_dangerous_code=True,
@@ -144,18 +145,20 @@ def build_graph(name, desc, llm):
 
 def create_viz_dict(llm): # Creates the visualization dictionary and stores the result in the session state
     prompt = f"""
-    You will be given a dataframe 'df' and user research question. Your goal is to suggest visualizations, graphs, charts, etc. to guide their research question and objectives.
-    User research objective: {st.session_state.user_researchquestion}\n
+    You will be given a dataframe 'df'. Your goal is to create a pie chart to help the researcher see what diseases their genes are associated with. 
     Description of column names: {st.session_state.genes_colmeta_dict}\n
-    Output format instructions: A DICTIONARY of the graph type/name as the key, and a one or two line description of the graph/visualization as the value.
-    Include a maximum of 5 different visualizations.
-    The graphs or charts must be able to be constructed from existing df columns. Keep in mind some column values may be comma delimited and contain multiple values.
+    Output format instructions: A DICTIONARY of the pie chart as the key, and a one or two line description of the pie chart as the value.
+    The pie chart must be able to be constructed from existing df columns. Keep in mind some column values may be comma delimited and contain multiple values. 
+    Only produce one pie chart about related diseases.
+    
     Always include a final key-value pair that is 'I have my own idea':'User will give their own graph suggestion'
-    Output should not have any formatting characters.\n
+    Output should not have any formatting characters.\
     """
+
+    
     viz_pandas_agent = create_pandas_dataframe_agent(
         llm=llm,
-        df=st.session_state['user_refined_df'],
+        df=st.session_state['merged_df'],
         agent_type="tool-calling",
         allow_dangerous_code=True,
         include_df_in_prompt=True,
@@ -164,7 +167,7 @@ def create_viz_dict(llm): # Creates the visualization dictionary and stores the 
     viz_pandas_agent.handle_parsing_errors = "Check your output and make sure it conforms to the format instructions given, use the Action Input/Final Answer syntax."
     viz_dict_response = viz_pandas_agent.run(prompt)
     viz_dict_response.replace("```", "").strip() 
-    # st.write(viz_dict_response)
+    st.write(viz_dict_response)
     viz_dict_response = ast.literal_eval(viz_dict_response) # converts llm response (string) into the dictionary literal
 
     # Store dictionary to session state to avoid rebuilding it every time the page re-runs:
@@ -335,6 +338,10 @@ def send_genesdata():
         st.error("Failed to store data.")
 
 def analyze_data(llm):
+    # create df with same rows as user_refined_df but same columns as genes_info_df
+    if 'merged_df' not in st.session_state:
+        st.session_state['merged_df'] = st.session_state.user_refined_df.merge(st.session_state.genes_info_df, on='Gene', how='left')
+    
     create_viz_dict(llm) # Make the viz dict once initially with the default research question
 
     st.subheader("Restate your research objectives, if desired:")
@@ -354,7 +361,7 @@ def analyze_data(llm):
 
     # put expander so data can be seen
     with st.expander("**Click to view data being referenced**"):
-        st.dataframe(st.session_state['user_refined_df'])
+        st.dataframe(st.session_state['merged_df'])
 
     code_plot_output_container = st.container()
     cols = st.columns(len(st.session_state['viz_dict'])-1) 
@@ -362,7 +369,7 @@ def analyze_data(llm):
         with col:
             if st.button(chart_names[i],use_container_width=True):
                 llm_graph_output = build_graph(chart_names[i],chart_descriptions[i],llm)
-                reformatted_graph_code = llm_graph_output.replace("df", "st.session_state['user_refined_df']")
+                reformatted_graph_code = llm_graph_output.replace("df", "st.session_state['merged_df']")
                 reformatted_graph_code.replace("```", "").strip() # remove code backticks left over
 
                 # Output results to the page container outside of the column
