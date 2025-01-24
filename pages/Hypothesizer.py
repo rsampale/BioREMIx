@@ -151,7 +151,7 @@ if st.session_state['authenticated']:
                 pd_df_agent = create_pandas_dataframe_agent(
                     llm=llm_4o,
                     df=st.session_state['relevant_cols_only_df'],
-                    # agent_type="tool-calling", # can also be others like 'openai-tools' or 'openai-functions'
+                    agent_type="tool-calling", # Significantly faster and less likely to run into parsing errors than the default
                     verbose=True,
                     allow_dangerous_code=True, 
                     include_df_in_prompt=True, # could possibly remove to save tokens
@@ -201,6 +201,8 @@ if st.session_state['authenticated']:
             st.session_state['show_chat_analyze_buttons'] = True
         if 'show_refine_analyze_buttons' not in st.session_state:
             st.session_state['show_refine_analyze_buttons'] = True
+        if 'show_refine_chat_buttons' not in st.session_state:
+            st.session_state['show_refine_chat_buttons'] = True
         if 'data_chat' not in st.session_state:
             st.session_state['data_chat'] = False
         if 'analyze_data' not in st.session_state:
@@ -228,4 +230,8 @@ if st.session_state['authenticated']:
         if st.session_state['show_refine_analyze_buttons']:
             left_col.button("Keep Refining", icon="🔃", use_container_width=True,on_click=refineloop_buttonclick)
             right_col.button("Ready To Analyze", icon="🔬", use_container_width=True,on_click=analyze_buttonclick)
+
+        if st.session_state['show_refine_chat_buttons']:
+            left_col.button("Keep Refining", icon="🔃", use_container_width=True,on_click=refineloop_buttonclick)
+            right_col.button("Chat with your Data", icon="💬", use_container_width=True,on_click=chat_buttonclick)
         

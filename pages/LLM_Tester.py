@@ -1,11 +1,13 @@
 import streamlit as st
 from functions import *
+from default_data import create_colname_vectorstore, load_default_data
 from langchain.chains import LLMChain
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
 from langchain.memory.chat_message_histories import StreamlitChatMessageHistory
 from langchain.prompts import PromptTemplate 
 
+load_default_data()
 mgi_icon = "images/the_elizabeth_h_and_james_s_mcdonnell_genome_institute_logo.jpg"
 st.logo(mgi_icon, size='large')
 
@@ -59,11 +61,3 @@ if st.session_state['authenticated']:
             response = llm_chain.run(prompt)
         st.session_state.last_response = response
         st.chat_message("assistant").write(response)
-               
-
-                
-    # clear chat button
-    clear_memory = st.sidebar.button("Clear Chat")
-    if clear_memory:
-        clear_session_state_except_password()
-        st.session_state["last_response"] = "GPT: Hi there, hope you're doing great! How can I help you?"

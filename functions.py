@@ -55,7 +55,7 @@ def reboot_hypothesizer():
     # Iterate over the keys
     for key in keys:
         # If the key is not 'authenticated', delete it from the session_state
-        if key not in ['authenticated','genes_info_df','genes_colmeta_dict','colmeta_dict']:
+        if key not in ['authenticated','genes_info_df','genes_colmeta_dict','colmeta_dict','colmeta_df']:
             del st.session_state[key]
             
 def refineloop_buttonclick(): # SHOULD MAKE THESE JUST TOGGLE MAYBE INSTEAD OF HARDCODING TRUE OR FALSE
@@ -63,6 +63,7 @@ def refineloop_buttonclick(): # SHOULD MAKE THESE JUST TOGGLE MAYBE INSTEAD OF H
     st.session_state['do_refine_loop'] = True
     st.session_state['show_chat_analyze_buttons'] = True
     st.session_state['show_refine_analyze_buttons'] = False
+    st.session_state['show_refine_chat_buttons'] = False
     st.session_state['data_chat'] = False
     st.session_state['analyze_data'] = False
 
@@ -71,6 +72,7 @@ def chat_buttonclick():
     st.session_state['do_refine_loop'] = False
     st.session_state['show_chat_analyze_buttons'] = False
     st.session_state['show_refine_analyze_buttons'] = True
+    st.session_state['show_refine_chat_buttons'] = False
     st.session_state['data_chat'] = True
     st.session_state['analyze_data'] = False
 
@@ -79,6 +81,7 @@ def analyze_buttonclick():
     st.session_state['do_refine_loop'] = False
     st.session_state['show_chat_analyze_buttons'] = False
     st.session_state['show_refine_analyze_buttons'] = False
+    st.session_state['show_refine_chat_buttons'] = True
     st.session_state['data_chat'] = False
     st.session_state['analyze_data'] = True
 
