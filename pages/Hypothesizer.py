@@ -4,7 +4,8 @@ from functions import *
 import pandas as pd
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
-from langchain_experimental.agents import create_pandas_dataframe_agent 
+from langchain_experimental.agents import create_pandas_dataframe_agent
+from collections import deque 
 
 mgi_icon = "images/the_elizabeth_h_and_james_s_mcdonnell_genome_institute_logo.jpg"
 st.logo(mgi_icon, size='large')
@@ -39,7 +40,7 @@ if st.session_state['authenticated']:
         st.session_state['user_researchquestion'] = None
     if 'relevant_cols_only_df' not in st.session_state:
         st.session_state['relevant_cols_only_df'] = None
-    if 'user_refined_df' not in st.session_state:
+    if 'user_refined_df' not in st.session_state: 
         st.session_state['user_refined_df'] = None
     if 'user_refinement_q' not in st.session_state:
         st.session_state['user_refinement_q'] = None
@@ -47,6 +48,8 @@ if st.session_state['authenticated']:
         st.session_state['skipped_col_filter'] = False
     if 'skipped_initial_refine' not in st.session_state:
         st.session_state["skipped_initial_refine"] = False
+    if 'gene_df_history' not in st.session_state: # STORES PAST AND PRESENT GENE DFs TO ALLOW FOR UNDOs
+        st.session_state['gene_df_history'] = deque(maxlen=7)
 
     # Text elements
     if 'provide_rq_text' not in st.session_state:
@@ -74,9 +77,8 @@ if st.session_state['authenticated']:
         st.write("**This will subset your data to include only relevant columns.**")
         rq_box = st.container(height=150)
         with rq_box:
-            user_researchquestion = st.text_input("E.g. 'I want to analyze enzymatic proteins that are associated with ALS'",max_chars=500)
-            if user_researchquestion:
-                st.session_state['user_researchquestion'] = user_researchquestion
+            st.text_input("E.g. 'I want to analyze enzymatic proteins that are associated with ALS'",max_chars=500,key='user_researchquestion')
+            if st.session_state.user_researchquestion:
                 st.session_state["skipped_col_filter"] = False
             st.write("**Your Question:** ",st.session_state['user_researchquestion'])
             # FOR COPY PASTE: I am interested in finding out common cytosolic genes implicated in both Parkinsons and ALS
@@ -125,13 +127,19 @@ if st.session_state['authenticated']:
             st.subheader("Data with columns relevant to your research question:")    
             st.dataframe(st.session_state['relevant_cols_only_df'])
 
+
             st.divider()
             st.header("Refine your results",divider='green')
+
+            # Store the refinement query in a variable holding the last refinement_q so that it can be displayed in repeat_refine. This variable is NOT wiped during widget on_change
+            if 'last_refinement_q' not in st.session_state:
+                st.session_state['last_refinement_q'] = None
+
             refine_box = st.container(height=150)
             with refine_box:
-                user_refinement_q = st.text_input("E.g. 'Only keep genes with low tissue specificity'",max_chars=500)
-                if user_refinement_q:
-                    st.session_state['user_refinement_q'] = user_refinement_q
+                if 'init_refinement_q_widget' not in st.session_state:
+                    st.session_state.init_refinement_q_widget = None
+                st.text_input("E.g. 'Only keep genes with low tissue specificity'",max_chars=500,key='init_refinement_q_widget',on_change=submit_text(location='initial_refinement'))
                 st.write("**Your Data Refinement Query:** ",st.session_state['user_refinement_q'])
 
             # Show option to skip if user has not yet entered anything
@@ -145,6 +153,8 @@ if st.session_state['authenticated']:
                         st.session_state['user_refined_df'] = st.session_state['relevant_cols_only_df'] # If the user skips the first refinement, the refined df is just the df with relevant columns
                         st.session_state["skipped_initial_refine"] = True
             elif st.session_state['user_refinement_q']:
+
+                st.session_state['last_refinement_q'] = st.session_state.user_refinement_q
 
                 st.session_state['skipped_initial_refine'] = False
 
@@ -180,13 +190,20 @@ if st.session_state['authenticated']:
                 # st.write(f"Code to be evaluated:{pandas_code_only}") # FOR DEBUGGING LLM OUTPUT
                 user_refined_df = eval(pandas_code_only)
                 st.session_state['user_refined_df'] = user_refined_df
-                
 
             if st.session_state['user_refinement_q'] or st.session_state['skipped_initial_refine']: # Only show buttons if user has either given a refinement or skipped that step
+                # Add the current user_refined_df (whether with rows filtered or not) to the history (used for repeat refine, not here):
+                st.session_state.gene_df_history.append((st.session_state['user_refined_df'],st.session_state['user_refinement_q'])) # Append to history a tuple of (df, most recent refinement)
 
                 # Show either the updated refined dataframe or the full one with whatever columns were filtered (if any)
-                st.subheader("Data with any row/gene refinements:")    
+                st.subheader("Data with any row/gene refinements:")
+                # st.write(len(st.session_state.gene_df_history))
                 st.dataframe(st.session_state.user_refined_df)
+                
+                # Button to undo last refinement:
+                st.button("**Undo** the last refinement",use_container_width=True,icon=":material/undo:",type="primary",on_click=undo_last_refinement,args=("initial",))
+                # st.write(f"len of gene_df_history: {len(st.session_state.gene_df_history)}")
+
                 st.divider()
                 # ADD 3 BUTTONS FOR: RE-REFINE, CHAT WITH DATA, ANALYZE
                 left_col, middle_col, right_col = st.columns(3)

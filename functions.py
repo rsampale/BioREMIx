@@ -91,6 +91,30 @@ def clear_text(text_element):
     elif text_element == 'ref_prompt':
         st.session_state['provide_refinement_text'] = ""
 
+def submit_text(location):
+    if location == 'initial_refinement':
+        st.session_state.user_refinement_q = st.session_state.init_refinement_q_widget
+        st.session_state.last_refinement_q = st.session_state.init_refinement_q_widget
+        st.session_state.init_refinement_q_widget = None
+    elif location == 'repeat_refinement':
+        if st.session_state.repeat_refinement_q_widget: # Only update the last refinement if the widget is not empty
+            st.session_state.last_refinement_q = st.session_state.repeat_refinement_q_widget
+        st.session_state.user_refinement_q = st.session_state.repeat_refinement_q_widget
+        st.session_state.repeat_refinement_q_widget = None
+        
+def undo_last_refinement(refinement):
+    # st.write("EXECUTED UNDO")
+    if refinement == "initial":
+        if len(st.session_state.gene_df_history) >= 1:
+            st.session_state.gene_df_history.pop()
+        st.session_state.user_refinement_q = None
+        st.session_state.skipped_initial_refine = False
+    elif refinement == "repeat":
+        if len(st.session_state.gene_df_history) > 1:
+            st.session_state.gene_df_history.pop()
+            st.session_state.user_refined_df = st.session_state.gene_df_history[-1][0] # Gets the df part of the most recent tuple in the history
+            st.session_state.last_refinement_q = st.session_state.gene_df_history[-1][1]
+
 def build_graph(name, desc, llm):
     prompt = f"""
     Here is a chart or visualization: {name}.
@@ -147,20 +171,17 @@ def create_viz_dict(llm): # Creates the visualization dictionary and stores the 
     st.session_state['viz_dict'] = viz_dict_response
 
 def repeat_refinement(llm):
-    if 'input_text' not in st.session_state:
-        st.session_state['input_text'] = None
+    if 'repeat_refinement_q_widget' not in st.session_state:
+        st.session_state['repeat_refinement_q_widget'] = None
 
     st.subheader("Enter your refining statement:")
-        
     repeat_refine_box = st.container(height=150)
     with repeat_refine_box:
-        user_rerefinement_q = st.text_input("E.g. 'Only keep genes with low tissue specificity'",max_chars=501,value=st.session_state['input_text'],key='input_text') # if maxchars = 500 it thinks its the same text_input as before
-        if user_rerefinement_q:
-            st.session_state['user_refinement_q'] = user_rerefinement_q
-        st.write("**Your Most Recent Data Refinement Query:** ",st.session_state['user_refinement_q'])
+        st.text_input("E.g. 'Only keep genes with low tissue specificity'",max_chars=501,key='repeat_refinement_q_widget',on_change=submit_text(location="repeat_refinement")) # if maxchars = 500 it thinks its the same text_input as before
+        st.write("**Your Most Recent Data Refinement Query:** ",st.session_state.last_refinement_q)
     
     ## repeat-refining agent:
-    if st.session_state['input_text']: # only bother re-creating the dataframe if the user has given new input
+    if st.session_state['user_refinement_q']: # only bother re-creating the dataframe if the user has given new input
         pd_df_agent = create_pandas_dataframe_agent(
             llm=llm,
             df=st.session_state['user_refined_df'],
@@ -191,11 +212,20 @@ def repeat_refinement(llm):
         # st.write(f"Code to be evaluated:{pandas_code_only}")
         user_refined_df = eval(pandas_code_only)
         st.session_state['user_refined_df'] = user_refined_df
+
+        # Add to history
+        st.session_state.gene_df_history.append((st.session_state['user_refined_df'],st.session_state['last_refinement_q']))
+        st.session_state['last_refinement_q'] = st.session_state.gene_df_history[-1][1]
     
     st.subheader("Instructions:")
     st.write("**Press enter to submit a refinement. Repeat as many times as needed.**")
     st.header("Current refined data:")
-    st.dataframe(st.session_state['user_refined_df'])
+    # st.write(f"len of gene_df_history: {len(st.session_state.gene_df_history)}")
+    # st.write(f"Query at top of history: {st.session_state.gene_df_history[-1][1]}")
+    st.dataframe(st.session_state.user_refined_df) # maybe change to point to most recent df on history?
+    st.button("**Undo** the last refinement",use_container_width=True,icon=":material/undo:",type="primary",on_click=undo_last_refinement,args=("repeat",))
+
+    st.divider()
 
 def chat_with_data(llm):
     
@@ -277,6 +307,8 @@ def chat_with_data(llm):
     with st.expander("**Click to view data being referenced**"):
         st.dataframe(st.session_state['user_refined_df'])
 
+    st.divider()
+
 def send_genesdata():
     gene_list = list(st.session_state['user_refined_df']['Gene'])
     
@@ -351,3 +383,5 @@ def analyze_data(llm):
         if st.button("Send your genes to NeuroKinex",use_container_width=True):
             send_genesdata()
             st.link_button(label="View Genes in NeuroKinex",url=st.session_state["neurokinex_url"],type="primary",use_container_width=True)
+
+    st.divider()
