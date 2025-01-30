@@ -93,7 +93,6 @@ def clear_text(text_element):
     elif text_element == 'ref_prompt':
         st.session_state['provide_refinement_text'] = ""
 
-<<<<<<< Updated upstream
 def submit_text(location):
     if location == 'initial_refinement':
         st.session_state.user_refinement_q = st.session_state.init_refinement_q_widget
@@ -119,9 +118,7 @@ def undo_last_refinement(refinement):
             st.session_state.last_refinement_q = st.session_state.gene_df_history[-1][1]
 
 def build_graph(name, desc, llm):
-=======
 # def build_graph(name, desc, llm):
->>>>>>> Stashed changes
 
 #     prompt = f"""
 #     Here is a chart or visualization: {name}.
