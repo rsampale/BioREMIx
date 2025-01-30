@@ -2,6 +2,7 @@ import streamlit as st
 import time
 import ast
 import matplotlib.pyplot as plt
+import pandas as pd
 import requests
 from openai import OpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
@@ -46,6 +47,7 @@ def authenticate():
                         help_placeholder.empty()
                     else:
                         st.error("❌ Incorrect Password. Please Try Agian.")
+
                         
 
 def reboot_hypothesizer():
@@ -91,6 +93,7 @@ def clear_text(text_element):
     elif text_element == 'ref_prompt':
         st.session_state['provide_refinement_text'] = ""
 
+<<<<<<< Updated upstream
 def submit_text(location):
     if location == 'initial_refinement':
         st.session_state.user_refinement_q = st.session_state.init_refinement_q_widget
@@ -116,62 +119,125 @@ def undo_last_refinement(refinement):
             st.session_state.last_refinement_q = st.session_state.gene_df_history[-1][1]
 
 def build_graph(name, desc, llm):
+=======
+# def build_graph(name, desc, llm):
+>>>>>>> Stashed changes
 
-    prompt = f"""
-    Here is a chart or visualization: {name}.
-    Here is a brief and general description of what the chart could look like or compare: {desc}.
-    Format instructions: Return ONLY the matplotlib/python code required to create this graph from the dataframe you are given.
-    Keep in mind some column values may be comma delimited and contain multiple values.
-    Do not create a new dataframe, and instead access the df you are given for data.
-    Important: Do not include ANYTHING that is not code (subtitles, descriptions, instructions, comments, etc.). 
-    Do not include any formatting characters (i.e. backticks) in your response. Just plain text.
-    Never create new variable names with periods in them.
-    Never create new variables containing 'df' in their names, or directly modify the original df.
+#     prompt = f"""
+#     Here is a chart or visualization: {name}.
+#     Here is a brief and general description of what the chart could look like or compare: {desc}.
+#     Format instructions: Return ONLY the matplotlib/python code required to create this graph from the dataframe you are given.
+#     Keep in mind some column values may be comma delimited and contain multiple values.
+#     Do not create a new dataframe, and instead access the df you are given for data.
+#     Important: Do not include ANYTHING that is not code (subtitles, descriptions, instructions, comments, etc.). 
+#     Do not include any formatting characters (i.e. backticks) in your response. Just plain text.
+#     Never create new variable names with periods in them.
+#     Never create new variables containing 'df' in their names, or directly modify the original df.
+#     """
+#     df_agent = create_pandas_dataframe_agent(
+#         llm=llm,
+#         df=st.session_state['merged_df'],
+#         agent_type="tool-calling", 
+#         verbose=True,
+#         allow_dangerous_code=True,
+#         include_df_in_prompt=True,
+#         number_of_head_rows=10
+#     )
+#     df_agent.handle_parsing_errors = "Check your output and make sure it follows the format instructions precisely. Use the Action Input/Final Answer syntax"
+
+#     response = df_agent.run(prompt)
+
+#     return response
+
+def build_visual_1(llm, pd):
+    st.write("Generating a visualization for diseases associated with your genes...")
+    # plt.figure(figsize=(10, 10))
+    # # disease_columns=st.session_state['merged_df']['']
+    # data = st.session_state['merged_df']['DISEASES???'].value_counts()
+    # plt.pie(data1, data2, autopct="%1.1f%%", startangle=140)
+    # plt.title("Disease Associations")
+    # st.pyplot(plt)
+    all_columns = list(st.session_state.merged_df.columns)
+    values = list()
+    prompt = PromptTemplate(
+    template = """
+    - Here is a list of columns in a dataframe: {all_cols}
+    - The columns hold information relating to gene names, disease associations, biological processes, and much more.
+    - Some names contain acronyms. Try to decode these remembering that this is a biological/genetic dataset.
+    - Consult the following dictionary to understand the meanings of columns you initially do not understand: {colmeta_dict}\n
+    Instructions:
+                - Using the list of column names, select any column names you think might be relevant to diseases associated with a gene
+                - Add up the 1's in each disease column and place them in a list
+                - Return only the counts relevant to disease columns in a list format. Remember, it is better to give more columns than necessary than to give not enough.
+                To do this, it may actually be easier to think which to exclude because they are most likely irrelevant. 
+                Format instructions: Return ONLY a list in the format 'col1,col2,col3' (without the quotes, and with no brackets or anything)
     """
-    df_agent = create_pandas_dataframe_agent(
-        llm=llm,
-        df=st.session_state['merged_df'],
-        agent_type="tool-calling", 
-        verbose=True,
-        allow_dangerous_code=True,
-        include_df_in_prompt=True,
-        number_of_head_rows=10
     )
-    df_agent.handle_parsing_errors = "Check your output and make sure it follows the format instructions precisely. Use the Action Input/Final Answer syntax"
-
-    response = df_agent.run(prompt)
-
-    return response
-
-def create_viz_dict(llm): # Creates the visualization dictionary and stores the result in the session state
-    prompt = f"""
-    You will be given a dataframe 'df'. Your goal is to create a pie chart to help the researcher see what diseases their genes are associated with. 
-    Description of column names: {st.session_state.genes_colmeta_dict}\n
-    Output format instructions: A DICTIONARY of the pie chart as the key, and a one or two line description of the pie chart as the value.
-    The pie chart must be able to be constructed from existing df columns. Keep in mind some column values may be comma delimited and contain multiple values. 
-    Only produce one pie chart about related diseases.
+    chain = prompt | llm
+    parser_output = chain.invoke({"all_cols": all_columns, "colmeta_dict": st.session_state.genes_colmeta_dict})
+    st.write(parser_output)
+    colnames_list = parser_output.content.split(",")
+    relevant_cols_only_df = st.session_state.merged_df[colnames_list]
+    st.session_state['relevant_cols_only_df'] = relevant_cols_only_df
     
-    Always include a final key-value pair that is 'I have my own idea':'User will give their own graph suggestion'
-    Output should not have any formatting characters.\
-    """
+    relevant_cols_converted_df = relevant_cols_only_df.replace("NA", "0")
+    relevant_cols_converted_df = relevant_cols_converted_df.astype(int)
+    st.session_state['relevant_cols_converted_df'] = relevant_cols_converted_df
+    st.dataframe(st.session_state['relevant_cols_only_df'])
+    counts = relevant_cols_converted_df.sum
+    st.write(counts)
+    
+
+    #need to make sure these columns are actually relevant, may need to make prompt more specific eventually
 
     
-    viz_pandas_agent = create_pandas_dataframe_agent(
-        llm=llm,
-        df=st.session_state['merged_df'],
-        agent_type="tool-calling",
-        allow_dangerous_code=True,
-        include_df_in_prompt=True,
-        number_of_head_rows=10
-    )
-    viz_pandas_agent.handle_parsing_errors = "Check your output and make sure it conforms to the format instructions given, use the Action Input/Final Answer syntax."
-    viz_dict_response = viz_pandas_agent.run(prompt)
-    viz_dict_response.replace("```", "").strip() 
-    st.write(viz_dict_response)
-    viz_dict_response = ast.literal_eval(viz_dict_response) # converts llm response (string) into the dictionary literal
 
-    # Store dictionary to session state to avoid rebuilding it every time the page re-runs:
-    st.session_state['viz_dict'] = viz_dict_response
+    
+
+
+    # df_int = relevant_cols_only_df.astype(int)
+    # #col_counts = df_int.sum(axis=0)
+    # col_counts = relevant_cols_only_df.apply(lambda col: col.eq("1").sum(), axis=0)
+    # labels=col_counts.index
+    # values=col_counts.values
+
+    # plt.figure(figsize=(8, 8))
+    # plt.pie( values, labels=labels, autopct='%1.1f%%', startangle=90)
+    # plt.title("Disease Associations")
+    # st.pyplot(plt)
+
+    
+
+
+# def create_viz_dict(llm): # Creates the visualization dictionary and stores the result in the session state
+#     prompt = f"""
+#     You will be given a dataframe 'df'. Your goal is to create a certain chart to help the researcher see what diseases their genes are associated with. 
+#     Description of column names: {st.session_state.genes_colmeta_dict}\n
+#     Output format instructions: A DICTIONARY of the pie chart as the key, and a one or two line description of the pie chart as the value.
+#     The pie chart must be able to be constructed from existing df columns. Keep in mind some column values may be comma delimited and contain multiple values. 
+#     Only produce one pie chart about related diseases.
+    
+#     Always include a final key-value pair that is 'I have my own idea':'User will give their own graph suggestion'
+#     Output should not have any formatting characters.\
+#     """
+
+    
+#     viz_pandas_agent = create_pandas_dataframe_agent(
+#         llm=llm,
+#         df=st.session_state['merged_df'],
+#         agent_type="tool-calling",
+#         allow_dangerous_code=True,
+#         include_df_in_prompt=True,
+#         number_of_head_rows=10
+#     )
+#     viz_pandas_agent.handle_parsing_errors = "Check your output and make sure it conforms to the format instructions given, use the Action Input/Final Answer syntax."
+#     viz_dict_response = viz_pandas_agent.run(prompt)
+#     viz_dict_response.replace("```", "").strip() 
+#     st.write(viz_dict_response)
+#     viz_dict_response = ast.literal_eval(viz_dict_response) # converts llm response (string) into the dictionary literal
+
+#     # Store dictionary to session state to avoid rebuilding it every time the page re-runs:
+#     st.session_state['viz_dict'] = viz_dict_response
 
 def repeat_refinement(llm):
     if 'repeat_refinement_q_widget' not in st.session_state:
@@ -339,49 +405,54 @@ def send_genesdata():
 
 def analyze_data(llm):
     # create df with same rows as user_refined_df but same columns as genes_info_df
+    defined_merged_df=st.session_state.user_refined_df.merge(st.session_state.genes_info_df, on='Gene', how='left')
     if 'merged_df' not in st.session_state:
-        st.session_state['merged_df'] = st.session_state.user_refined_df.merge(st.session_state.genes_info_df, on='Gene', how='left')
+        st.session_state['merged_df']=defined_merged_df
     
-    create_viz_dict(llm) # Make the viz dict once initially with the default research question
+    # create_viz_dict(llm) # Make the viz dict once initially with the default research question
 
     st.subheader("Restate your research objectives, if desired:")
     st.write("Default = the initial research question you provided")
     new_researchquestion = st.text_input("E.g. 'I am interested in finding where common ALS and PD genes localize'",max_chars=500)
     if new_researchquestion:
         st.session_state['user_researchquestion'] = new_researchquestion
-        create_viz_dict(llm) # Runs the dictionary creation function every time a new research question is entered
+        # create_viz_dict(llm) # Runs the dictionary creation function every time a new research question is entered
     st.write(f"**Current research question:** {st.session_state.user_researchquestion}")
 
     st.divider()
     st.subheader("(EXPERIMENTAL) Here are some suggested visualizations that might be of use to you:")
-
+    st.title("Data Visualization")
+    st.write("Choose a visualization to generate:")
+    if st.button("Pie Chart: Disease Associations"):
+        build_visual_1(llm=llm,)
+    
     # st.write(st.session_state['viz_dict'])
-    chart_names = list(st.session_state['viz_dict'].keys())
-    chart_descriptions = list(st.session_state['viz_dict'].values())
+    # chart_names = list(st.session_state['viz_dict'].keys())
+    # chart_descriptions = list(st.session_state['viz_dict'].values())
 
     # put expander so data can be seen
     with st.expander("**Click to view data being referenced**"):
         st.dataframe(st.session_state['merged_df'])
 
     code_plot_output_container = st.container()
-    cols = st.columns(len(st.session_state['viz_dict'])-1) 
-    for i, col in enumerate(cols):
-        with col:
-            if st.button(chart_names[i],use_container_width=True):
-                llm_graph_output = build_graph(chart_names[i],chart_descriptions[i],llm)
-                reformatted_graph_code = llm_graph_output.replace("df", "st.session_state['merged_df']")
-                reformatted_graph_code.replace("```", "").strip() # remove code backticks left over
+    # cols = st.columns(len(st.session_state['viz_dict'])-1) 
+    # for i, col in enumerate(cols):
+    #     with col:
+    #         if st.button(chart_names[i],use_container_width=True):
+    #             llm_graph_output = build_graph(chart_names[i],chart_descriptions[i],llm)
+    #             reformatted_graph_code = llm_graph_output.replace("df", "st.session_state['merged_df']")
+    #             reformatted_graph_code.replace("```", "").strip() # remove code backticks left over
 
-                # Output results to the page container outside of the column
-                with code_plot_output_container:
-                    st.write(reformatted_graph_code)
-                    exec(reformatted_graph_code, globals())
-                    st.pyplot(plt)
+    #             # Output results to the page container outside of the column
+    #             with code_plot_output_container:
+    #                 st.write(reformatted_graph_code)
+    #                 exec(reformatted_graph_code, globals())
+    #                 st.pyplot(plt)
     # Always have a 6th button that lets user suggest their own visualization
-    make_own_placeholder = st.empty()
-    with make_own_placeholder:
-        if st.button(chart_names[-1],use_container_width=True):
-            st.write("pog")
+    # make_own_placeholder = st.empty()
+    # with make_own_placeholder:
+    #     if st.button(chart_names[-1],use_container_width=True):
+    #         st.write("pog")
             
     st.divider()
     
