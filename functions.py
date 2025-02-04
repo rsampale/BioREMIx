@@ -118,8 +118,8 @@ def undo_last_refinement(refinement):
             st.session_state.user_refined_df = st.session_state.gene_df_history[-1][0] # Gets the df part of the most recent tuple in the history
             st.session_state.last_refinement_q = st.session_state.gene_df_history[-1][1]
 
+# builds a pie chart for disease association
 def build_visual_1(llm):
-    st.write("Generating a pie chart for diseases associated with your genes...")
     all_columns = list(st.session_state.merged_df.columns)
     prompt = PromptTemplate(
     template = """
@@ -128,8 +128,7 @@ def build_visual_1(llm):
     - Some names contain acronyms. Try to decode these remembering that this is a biological/genetic dataset.
     Instructions:
                 - Using the list of column names, select any column names you think might be relevant to diseases associated with a gene
-                - Pick columns that seem to be related to neurodegenerative diseases. For example, look for columns related to ALS
-                - Try to find columns related to neurodegenerative diseases such as SMA, SCA, ALS, juvenile ALS, parkinson, alzeimer, HSP if they are present
+                - Try to find columns related to neurodegenerative diseases such as SMA, SCA, ALS, juvenile ALS, parkinson, alzeimer, HSP, CMT, dHMN, and possibly others if they are present
                 - Do not include any super ambiguous column name like curated diseases, any disease designation, or other diseases. Only include column names that seem related to very specific diseases
                 - Do not include cancer or diabetes related columns
                 - Never include the column for a gene name. Only include columns for disease names
@@ -141,30 +140,40 @@ def build_visual_1(llm):
     chain = prompt | llm
     parser_output = chain.invoke({"all_cols": all_columns})
     
+    # recasts parser_output_content as a tuple
     parser_output_content = ast.literal_eval(parser_output.content)
     
+    # separates lists in the tuple
     colnames_list=parser_output_content[0]
     colnames_labels=parser_output_content[1]
 
+    # creates new df with only disease columns and adds to session state
     relevant_cols_only_df = st.session_state.merged_df[colnames_list]
-    
     st.session_state['relevant_cols_only_df'] = relevant_cols_only_df
+
+    # counts disease associations
     string_counts = relevant_cols_only_df.apply(lambda col: (col == 1).sum())
-    string_counts = [x for x in string_counts if x != 0]
     
+    # makes sure there is data to display (prevents displaying labels for 0 slices)
+    nonzero_indices = string_counts > 0
+    filtered_counts = string_counts[nonzero_indices]
+    filtered_labels = [label for label, keep in zip(colnames_labels, nonzero_indices) if keep]
+    if len(filtered_counts) == 0:
+        st.write("You do not have any data to plot. Try to redo your refinement.")
+        return
+    
+    # configures pie chart
     colormap=cm.get_cmap("Greens",len(colnames_list))
     colors=[colormap(i / len(colnames_list)) for i in range(len(colnames_list))]
-
     plt.figure(figsize=(6, 6))
-    plt.pie(string_counts, labels=colnames_labels, autopct='%1.1f%%', startangle=90, textprops={'fontsize': 5, }, labeldistance=1.05, colors=colors, wedgeprops={"edgecolor": "black", "linewidth": 1})
+    plt.pie(filtered_counts, labels=filtered_labels, autopct='%1.1f%%', startangle=90, textprops={'fontsize': 5, }, labeldistance=1.05, colors=colors, wedgeprops={"edgecolor": "black", "linewidth": 1})
     plt.title("Disease Associations")
     plt.axis('equal')  
     
     st.pyplot(plt)
 
-
+#builds a bar chart
 def build_visual_2(llm):
-    st.write("Generating a bar chart for the subcellular locations of your genes...")
     all_columns = list(st.session_state.merged_df.columns)
     prompt = PromptTemplate(
     template = """
@@ -175,7 +184,7 @@ def build_visual_2(llm):
                 - Using the list of column names, select one column the you think is most relevant to subcellular location.
                 - Return the of the columns you found for subcellular location exactly as they are titled in the dataframe
                 - E.g. Return: ('colname_1')
-                - Return ONLY the colun name with that formatting. Do not add any special characters or quotations
+                - Return ONLY the column name with that formatting. Do not add any special characters or quotations
     """
     )
     chain = prompt | llm
@@ -183,13 +192,21 @@ def build_visual_2(llm):
     
     parser_output_content = parser_output.content.strip('"')
 
-    all_locations=st.session_state.merged_df[parser_output_content].dropna().str.split(",")
+    # creates list of subcellular locations and gets counts for each location
+    all_locations = st.session_state.merged_df[parser_output_content].dropna().str.split(",")
     flat_locations = [loc.strip() for sublist in all_locations for loc in sublist]
     location_counts = pd.Series(flat_locations).value_counts()
+
+    # makes sure there is actually data to plot
+    nonzero_indices = location_counts > 0
+    filtered_counts = location_counts[nonzero_indices]
+    if len(filtered_counts) == 0:
+        st.write("You do not have any data to plot. Try to redo your refinement.")
+        return
     
+    #configure bar chart
     fig, ax = plt.subplots(figsize=(10, 6))
     location_counts.plot(kind="bar", color="palegreen", edgecolor="black", ax=ax)
-
     plt.xlabel("Subcellular Location", fontsize=12)
     plt.ylabel("Number of Genes", fontsize=12)
     plt.title("Distribution of Genes Across Subcellular Locations", fontsize=14)
@@ -270,14 +287,14 @@ def chat_with_data(llm):
 
     online_search = st.sidebar.toggle("Toggle Perplexity Online Search")
 
-    # non_toolcalling_agent = create_pandas_dataframe_agent(
-    #     llm=llm,
-    #     df=st.session_state['user_refined_df'],
-    #     prefix=begeneral_prefix,
-    #     allow_dangerous_code=True,
-    #     include_df_in_prompt=True,
-    #     number_of_head_rows=20
-    # )
+    non_toolcalling_agent = create_pandas_dataframe_agent(
+        llm=llm,
+        df=st.session_state['user_refined_df'],
+        prefix=begeneral_prefix,
+        allow_dangerous_code=True,
+        include_df_in_prompt=True,
+        number_of_head_rows=20
+    )
 
     pd_df_agent = create_pandas_dataframe_agent(
         llm=llm,
@@ -363,50 +380,19 @@ def send_genesdata():
         st.error("Failed to store data.")
 
 def analyze_data(llm):
-    
+    if 'merged_df' not in st.session_state:
+         st.session_state['merged_df'] = None
+
     #create a merged data frame and add to session state
     common_columns = list(set(st.session_state.user_refined_df.columns) & set(st.session_state.genes_info_df.columns))
     defined_merged_df = st.session_state.user_refined_df.merge(st.session_state.genes_info_df, on=common_columns, how="inner")
     defined_merged_df = defined_merged_df.loc[:, ~defined_merged_df.columns.duplicated()]
 
-    if 'merged_df' not in st.session_state:
-         st.session_state['merged_df']=defined_merged_df
-
-    
-    #create a merged data frame and add to session state
-    common_columns = list(set(st.session_state.user_refined_df.columns) & set(st.session_state.genes_info_df.columns))
-    defined_merged_df = st.session_state.user_refined_df.merge(st.session_state.genes_info_df, on=common_columns, how="inner")
-    defined_merged_df = defined_merged_df.loc[:, ~defined_merged_df.columns.duplicated()]
-
-    if 'merged_df' not in st.session_state:
-         st.session_state['merged_df']=defined_merged_df
-
+    st.session_state['merged_df'] = defined_merged_df
 
     st.divider()
-    st.subheader("Here are some suggested visualizations that might be of use to you:")
     st.title("Data Visualization")
-    st.write("Choose a visualization to generate:")
-
-    col1, col2 = st.columns(2)
-
-    if 'chart_type' not in st.session_state:
-        st.session_state.chart_type = None
-
-    with col1:
-        if st.button("Pie Chart: Disease Associations"):
-            st.session_state.chart_type = "pie"
-
-    with col2:
-        if st.button("Bar Chart: Subcellular Location"):
-            st.session_state.chart_type = "bar"
-
-    if st.session_state.chart_type == "pie":
-        build_visual_1(llm=llm)
-    if st.session_state.chart_type == "bar":
-        build_visual_2(llm=llm)
     st.subheader("Here are some suggested visualizations that might be of use to you:")
-    st.title("Data Visualization")
-    st.write("Choose a visualization to generate:")
 
     col1, col2 = st.columns(2)
 
@@ -426,8 +412,6 @@ def analyze_data(llm):
     if st.session_state.chart_type == "bar":
         build_visual_2(llm=llm)
     with st.expander("**Click to view data being referenced**"):
-        st.dataframe(st.session_state['merged_df'])
-
         st.dataframe(st.session_state['merged_df'])
 
     st.divider()
