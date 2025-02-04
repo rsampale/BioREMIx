@@ -372,6 +372,15 @@ def analyze_data(llm):
     if 'merged_df' not in st.session_state:
          st.session_state['merged_df']=defined_merged_df
 
+    
+    #create a merged data frame and add to session state
+    common_columns = list(set(st.session_state.user_refined_df.columns) & set(st.session_state.genes_info_df.columns))
+    defined_merged_df = st.session_state.user_refined_df.merge(st.session_state.genes_info_df, on=common_columns, how="inner")
+    defined_merged_df = defined_merged_df.loc[:, ~defined_merged_df.columns.duplicated()]
+
+    if 'merged_df' not in st.session_state:
+         st.session_state['merged_df']=defined_merged_df
+
 
     st.divider()
     st.subheader("Here are some suggested visualizations that might be of use to you:")
@@ -395,7 +404,30 @@ def analyze_data(llm):
         build_visual_1(llm=llm)
     if st.session_state.chart_type == "bar":
         build_visual_2(llm=llm)
+    st.subheader("Here are some suggested visualizations that might be of use to you:")
+    st.title("Data Visualization")
+    st.write("Choose a visualization to generate:")
+
+    col1, col2 = st.columns(2)
+
+    if 'chart_type' not in st.session_state:
+        st.session_state.chart_type = None
+
+    with col1:
+        if st.button("Pie Chart: Disease Associations"):
+            st.session_state.chart_type = "pie"
+
+    with col2:
+        if st.button("Bar Chart: Subcellular Location"):
+            st.session_state.chart_type = "bar"
+
+    if st.session_state.chart_type == "pie":
+        build_visual_1(llm=llm)
+    if st.session_state.chart_type == "bar":
+        build_visual_2(llm=llm)
     with st.expander("**Click to view data being referenced**"):
+        st.dataframe(st.session_state['merged_df'])
+
         st.dataframe(st.session_state['merged_df'])
 
     st.divider()
