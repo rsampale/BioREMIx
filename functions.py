@@ -238,31 +238,39 @@ def chat_with_data(llm):
     delimited lists or contain multiple values. If the user seems to be asking 
     a more general question about a gene, possible associations, biological process, etc. just use your internal knowledge. You can also mix the two sources of info,
     but then be clear where you are getting your information from. Try to keep responses relatively short unless asked for more information or told otherwise.
+
+    Do not simulate data. You are an agent that has access to the real dataframe and can simply access it as the variable df.
+    NEVER INCLUDE BACKQUOTES ('`') IN YOUR OUTPUT.
     """
+    # Note that you have two dataframes you have access to. One contains genes and annotated info about those genes, and the other contains a user-uploaded gene expression
+    # table with genes, logFC, padj, disease, and cell_type. Only use this expression dataframe if the user asks a question that requires it for an answer. When using it, consider only the genes
+    # also present in the first dataframe.
 
     online_search = st.sidebar.toggle("Toggle Perplexity Online Search")
 
-    # non_toolcalling_agent = create_pandas_dataframe_agent(
-    #     llm=llm,
-    #     df=st.session_state['user_refined_df'],
-    #     prefix=begeneral_prefix,
-    #     allow_dangerous_code=True,
-    #     include_df_in_prompt=True,
-    #     number_of_head_rows=20
-    # )
+    non_toolcalling_agent = create_pandas_dataframe_agent(
+        llm=llm,
+        df=st.session_state['user_refined_df'],
+        prefix=begeneral_prefix,
+        allow_dangerous_code=True,
+        include_df_in_prompt=True,
+        number_of_head_rows=15
+    )
+    non_toolcalling_agent.handle_parsing_errors = "Check your output and make sure it answers the user query, use the Action Input/Final Answer syntax"
 
-    pd_df_agent = create_pandas_dataframe_agent(
+    pd_df_agent = create_pandas_dataframe_agent( # 'SIMULATES' the data instead of really using the df unless made very clear it has access to df in the prefix
         llm=llm,
         df=st.session_state['user_refined_df'],
         prefix=begeneral_prefix,
         agent_type="tool-calling",
         allow_dangerous_code=True,
-        include_df_in_prompt=True,
-        number_of_head_rows=20
+        # include_df_in_prompt=True,
+        # number_of_head_rows=5
     )
+    # pd_df_agent.handle_parsing_errors = True
 
     if "messages" not in st.session_state or st.sidebar.button("Clear chat history",use_container_width=True):
-        st.session_state["messages"] = [{"role": "system", "content": "You are an AI assistant tasked to help a user gain insights from their data, and answer any of their questions."}]
+        st.session_state["messages"] = [{"role": "system", "content": "You are an AI assistant tasked to help a user gain insights from their data, and answer any of their questions. You already have access to a dataframe full of genes and annotation data to help."}]
     
     for msg in st.session_state.messages:
         if msg["role"] != "system":
@@ -286,7 +294,7 @@ def chat_with_data(llm):
                 if st.session_state.messages[-1]["role"] == "user": 
                     st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False,max_thought_containers=5)
                     # try:
-                    #         response = non_toolcalling_agent.run(st.session_state.messages, callbacks=[st_cb]) # Has more error loops with certain queries
+                    #     response = non_toolcalling_agent.run(st.session_state.messages, callbacks=[st_cb]) # Has more error loops with certain queries
                     # except:
                     response = pd_df_agent.run(st.session_state.messages, callbacks=[st_cb]) # Still can't access the internet to provide specifics on studies etc.
                     st.session_state.messages.append({"role": "assistant", "content": response})
