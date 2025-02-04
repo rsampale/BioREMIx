@@ -2,7 +2,6 @@ import streamlit as st
 import time
 import ast
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 import requests
 from openai import OpenAI
