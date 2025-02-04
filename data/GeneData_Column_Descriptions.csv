@@ -1,0 +1,65 @@
+﻿Colname,Description
+Uniprot.ID,Unique identifier assigned to the protein by UniProt.
+Gene.Name,Official gene symbol associated with the protein.
+Full.protein.name,Full name of the protein as listed in UniProt.
+Protein.length,Total number of amino acids in the protein sequence.
+Active.site.residues,Residues that form the active site of the protein and any associated notes about the site.
+Binding.site.residues,Residues that form the binding site of the protein (and ligands at those sites)
+Alternative.isoforms,Alternative products or isoforms that the gene can produce. Begins with 'ALTERNATIVE PRODUCTS: '
+Interacts.with,Any other proteins that the gene/protein product may interact with.
+Tissues,The body tissues that the gene is specific to. Begins with 'TISSUE SPECIFICITY: '
+Biological.processes,Biological processes (e.g. x catabolic process or y metabolic process) the gene is involved in.
+Molecular.function,"The molecular function or activity the gene product is involved in. E.g. endopolyphosphatase activity, etc."
+Transmembrane.domain.residues,Residues that form the transmembrane domain of the gene product. Begins with 'TRANSMEM'.
+Intramembrane.residues,Residues that form the intermembrane domain of the gene product. Begins with 'INTRAMEM'.
+Glycosylation.residues,Residues involved in glycosylation. Begins with 'CARBOHYD'.
+Modified.residues,Residues that have evidence of being modified (and what the modification is). Begins with 'MOD_RES'.
+Post.translational.modifications,Residues that have evidence of post translational modifications (and what the modification is). Begins with 'PTM'.
+Signal.peptide.residues,Residues/region involved in protein/molecule signaling. Begins with 'SIGNAL'.
+Propeptide.residues,Residues/region forming the propeptide. Begins with 'PROPEP'.
+Lipidation.residues,Residues involved in lipidation. Begins with 'LIPID'.
+Disulfide.bond.residues,Residues that form disulfide bonds. Begins with 'DISULFID'.
+Motifs,Describes a short conserved sequence motif of biological significance. Begins with 'MOTIF'
+Protein.families,Any families the protein is a part of.
+Zinc.finger.residues,Residues/region involved in protein/molecule signaling. Begins with 'SIGNAL'.
+Compositional.bias,Regions of compositional bias within the protein and the particular type of amino acids that are over-represented within those regions. Begins with 'COMPBIAS'
+Domain.Notes,Any notes or descriptions about a proteins domains. Begins with 'DOMAIN'.
+Repeat.region.residues,Region of the sequence with repeats.Begins with 'REPEAT'.
+Coiled.coil.residues,Residues/region involved that form coiled coil motifs. Begins with 'COILED'.
+Transit.peptide.residues,Residues/regionwhich form the transit peptide. Begins with 'TRANSIT'.
+Cross.linking.residues,Residues that form cross links. Begins with 'CROSSLNK'.
+Method.of.induction,Method of gene induction. What causes the gene to be expressed. Begins with 'INDUCTION'.
+Protein.pathways,The protein pathways that the gene product is involved in. Begins with 'PATHWAY'.
+Activity.regulation,How the protein is regulated by other proteins/molecules. Begins with 'ACTIVITY REGULATION: '.
+Catalytic.activity,"Description of the gene product's catalytic activity, if any. Begins with 'CATALYTIC ACTIVITY: '"
+DNA.binding,Residues/region involved in binding DNA. Begins with 'DNA_BIND '
+EC.number,Enzyme commission number (if any).
+Cofactors,Cofactors or essential molecules required for protein activity.
+MIM.Number,Unique identifier for a genetic condition or gene in the Online Mendelian Inheritance in Man (OMIM) database
+Chromosome,Chromosome that the gene is found on.
+Genomic.Position.Start,Genomic start position of the gene.
+Genomic.Position.End,Genomic end position of the gene.
+Entrez.ID,Entrez ID for the gene.
+Ensembl.ID,Ensembl database identifier for the gene.
+Subcellular.location,Organelle or cellular compartment that the gene product localizes to.
+Sub.mitochondria.localization,"For mitochondria localizing genes, the sub mitochondrial compartment where the gene is found,"
+Mitochondria.pathways,"For mitochondria localizing genes, the mitochondrial pathways the gene/gene product is involved in."
+Protein.class,"The protein class of the disease product. E.g. Enzymes, disease related genes, predicted membrane proteins, transporters, etc."
+RNA.tissue.specificity,Whether the gene has high or low tissue specificity.
+Cell.type.specificity,The cell type that a gene is specific to (if any).
+Antibody,Antibody identifier(s).
+CMT,The gene is associated with Charcot-Marie-Tooth (CMT) disease. 1 if associated.
+Giwon.list,Gene is a part of Giwon's list.
+Robi.list,Gene is a part of Rob's list.
+Jeff.list,Gene is a part of Jeff's list.
+ALS,The gene is associated with Amyotrophic lateral sclerosis (ALS) disease. 1 if associated.
+dHMN,The gene is associated with a distal hereditary motor neuropathy (dHMN) disease. 1 if associated.
+HSP,The gene is associated with Henoch-Schönlein Purpura (HSP) disease. 1 if associated.
+juvenile.ALS,The gene is associated with juvenile amyotrophic lateral sclerosis (jALS) disease. 1 if associated.
+SMA,The gene is associated with Spinal Muscular Atrophy (SMA) disease. 1 if associated.
+SCA,The gene is associated with Spinocerebellar Ataxia (SCA) disease. 1 if associated.
+Diabetes,The gene is associated with Diabetes disease. 1 if associated.
+Cancer.related,The gene is associated with Cancer. 1 if associated.
+Other.disease,The gene is associated with some other disease. 1 if associated.
+NDD.count,Number of neurodegenerative diseases the gene is associated with.
+Gene.of.interest,Whether the gene is one of the MGI's genes of interest.

@@ -242,14 +242,14 @@ def chat_with_data(llm):
 
     online_search = st.sidebar.toggle("Toggle Perplexity Online Search")
 
-    non_toolcalling_agent = create_pandas_dataframe_agent(
-        llm=llm,
-        df=st.session_state['user_refined_df'],
-        prefix=begeneral_prefix,
-        allow_dangerous_code=True,
-        include_df_in_prompt=True,
-        number_of_head_rows=20
-    )
+    # non_toolcalling_agent = create_pandas_dataframe_agent(
+    #     llm=llm,
+    #     df=st.session_state['user_refined_df'],
+    #     prefix=begeneral_prefix,
+    #     allow_dangerous_code=True,
+    #     include_df_in_prompt=True,
+    #     number_of_head_rows=20
+    # )
 
     pd_df_agent = create_pandas_dataframe_agent(
         llm=llm,
@@ -276,8 +276,8 @@ def chat_with_data(llm):
 
     with st.chat_message("assistant"):
         
-        with st.expander("session_state.messages:",expanded=False):
-                st.write(st.session_state.messages)
+        # with st.expander("session_state.messages:",expanded=False):
+        #         st.write(st.session_state.messages)
         # st.write(len(st.session_state.messages)) # is 1 before user provides anything
 
         if len(st.session_state.messages) > 1:
@@ -285,10 +285,10 @@ def chat_with_data(llm):
             if not online_search:
                 if st.session_state.messages[-1]["role"] == "user": 
                     st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False,max_thought_containers=5)
-                    try:
-                            response = non_toolcalling_agent.run(st.session_state.messages, callbacks=[st_cb]) 
-                    except:
-                        response = pd_df_agent.run(st.session_state.messages, callbacks=[st_cb]) # Still can't access the internet to provide specifics on studies etc.
+                    # try:
+                    #         response = non_toolcalling_agent.run(st.session_state.messages, callbacks=[st_cb]) # Has more error loops with certain queries
+                    # except:
+                    response = pd_df_agent.run(st.session_state.messages, callbacks=[st_cb]) # Still can't access the internet to provide specifics on studies etc.
                     st.session_state.messages.append({"role": "assistant", "content": response})
                     st.write(response)
             else:
@@ -310,7 +310,7 @@ def chat_with_data(llm):
     st.divider()
 
 def send_genesdata():
-    gene_list = list(st.session_state['user_refined_df']['Gene'])
+    gene_list = list(st.session_state['user_refined_df']['Gene_Name']) # HARDCODED SO WONT WORK IF USER DF DOESNT HAVE THIS NAME FOR GENE COLUMN
     
     # DDB_GENESLIST_API_URL = "https://9icpbd78nf.execute-api.us-east-1.amazonaws.com/prod"
     DDB_GENESLIST_API_URL = "https://9icpbd78nf.execute-api.us-east-1.amazonaws.com/proxy_prod"

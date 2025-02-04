@@ -61,6 +61,7 @@ if st.session_state['authenticated']:
     llm_4o = ChatOpenAI(temperature=0, model='gpt-4o-2024-11-20', openai_api_key=OPENAI_API_KEY)
     llm_o1mini = ChatOpenAI(temperature=1,model='o1-mini', openai_api_key=OPENAI_API_KEY) # Actually might work now, but takes a long time. Investigate further by printing response.
     llm_o1prev = ChatOpenAI(temperature=1,model='o1-preview', openai_api_key=OPENAI_API_KEY)
+    llm_o3_mini = ChatOpenAI(temperature=0, model='o3-mini', openai_api_key=OPENAI_API_KEY) # no access yet as of 02/03/25
 
     # PAGE FORMAT CODE START
     # Make into invisible container so it can be hidden with appropriate buttons?
