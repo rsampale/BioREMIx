@@ -2,6 +2,7 @@ import streamlit as st
 import time
 import ast
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import pandas as pd
 import requests
 from openai import OpenAI
@@ -142,7 +143,6 @@ def build_visual_1(llm):
     
     parser_output_content = ast.literal_eval(parser_output.content)
     
-    
     colnames_list=parser_output_content[0]
     colnames_labels=parser_output_content[1]
 
@@ -150,11 +150,13 @@ def build_visual_1(llm):
     
     st.session_state['relevant_cols_only_df'] = relevant_cols_only_df
     string_counts = relevant_cols_only_df.apply(lambda col: (col == 1).sum())
+    string_counts = [x for x in string_counts if x != 0]
     
-    custom_colors = ["mediumseagreen", "lightgreen", "palegreen", "white", "lightgrey"]
+    colormap=cm.get_cmap("Greens",len(colnames_list))
+    colors=[colormap(i / len(colnames_list)) for i in range(len(colnames_list))]
 
     plt.figure(figsize=(6, 6))
-    plt.pie(string_counts, labels=colnames_labels, autopct='%1.1f%%', startangle=90, textprops={'fontsize': 5, }, labeldistance=1.05, colors=custom_colors, wedgeprops={"edgecolor": "black", "linewidth": 1})
+    plt.pie(string_counts, labels=colnames_labels, autopct='%1.1f%%', startangle=90, textprops={'fontsize': 5, }, labeldistance=1.05, colors=colors, wedgeprops={"edgecolor": "black", "linewidth": 1})
     plt.title("Disease Associations")
     plt.axis('equal')  
     
