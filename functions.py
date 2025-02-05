@@ -2,6 +2,8 @@ import streamlit as st
 import time
 import ast
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import pandas as pd
 import requests
 from openai import OpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
@@ -46,6 +48,7 @@ def authenticate():
                         help_placeholder.empty()
                     else:
                         st.error("❌ Incorrect Password. Please Try Agian.")
+
                         
 
 def reboot_hypothesizer():
@@ -115,60 +118,102 @@ def undo_last_refinement(refinement):
             st.session_state.user_refined_df = st.session_state.gene_df_history[-1][0] # Gets the df part of the most recent tuple in the history
             st.session_state.last_refinement_q = st.session_state.gene_df_history[-1][1]
 
-def build_graph(name, desc, llm):
-    prompt = f"""
-    Here is a chart or visualization: {name}.
-    Here is a brief and general description of what the chart could look like or compare: {desc}.
-    Format instructions: Return ONLY the matplotlib/python code required to create this graph from the dataframe you are given.
-    Keep in mind some column values may be comma delimited and contain multiple values.
-    Do not create a new dataframe, and instead access the df you are given for data.
-    Important: Do not include ANYTHING that is not code (subtitles, descriptions, instructions, comments, etc.). 
-    Do not include any formatting characters (i.e. backticks) in your response. Just plain text.
-    Never create new variable names with periods in them.
-    Never create new variables containing 'df' in their names, or directly modify the original df.
+# builds a pie chart for disease association
+def build_visual_1(llm):
+    all_columns = list(st.session_state.merged_df.columns)
+    prompt = PromptTemplate(
+    template = """
+    - Here is a list of columns in a dataframe: {all_cols}
+    - The columns hold information relating to gene names, disease associations, biological processes, and much more.
+    - Some names contain acronyms. Try to decode these remembering that this is a biological/genetic dataset.
+    Instructions:
+                - Using the list of column names, select any column names you think might be relevant to diseases associated with a gene
+                - Try to find columns related to neurodegenerative diseases such as SMA, SCA, ALS, juvenile ALS, parkinson, alzeimer, HSP, CMT, dHMN, and possibly others if they are present
+                - Do not include any super ambiguous column name like curated diseases, any disease designation, or other diseases. Only include column names that seem related to very specific diseases
+                - Do not include cancer or diabetes related columns
+                - Never include the column for a gene name. Only include columns for disease names
+                - Return two lists in a tuple. The first should be the real column names, the second should be the plot labels for these names (thus should be better formatted without underscores, etc.)
+                - E.g. Return: (['colname_1','colname_2'],['col_label1','col_label2'])
+                - Return ONLY the tuple. Do not add the word python or any quotations. 
     """
-    df_agent = create_pandas_dataframe_agent(
-        llm=llm,
-        df=st.session_state['user_refined_df'],
-        agent_type="tool-calling", 
-        verbose=True,
-        allow_dangerous_code=True,
-        include_df_in_prompt=True,
-        number_of_head_rows=10
     )
-    df_agent.handle_parsing_errors = "Check your output and make sure it follows the format instructions precisely. Use the Action Input/Final Answer syntax"
+    chain = prompt | llm
+    parser_output = chain.invoke({"all_cols": all_columns})
+    
+    # recasts parser_output_content as a tuple
+    parser_output_content = ast.literal_eval(parser_output.content)
+    
+    # separates lists in the tuple
+    colnames_list=parser_output_content[0]
+    colnames_labels=parser_output_content[1]
 
-    response = df_agent.run(prompt)
+    # creates new df with only disease columns and adds to session state
+    relevant_cols_only_df = st.session_state.merged_df[colnames_list]
+    st.session_state['relevant_cols_only_df'] = relevant_cols_only_df
 
-    return response
+    # counts disease associations
+    string_counts = relevant_cols_only_df.apply(lambda col: (col == 1).sum())
+    
+    # makes sure there is data to display (prevents displaying labels for 0 slices)
+    nonzero_indices = string_counts > 0
+    filtered_counts = string_counts[nonzero_indices]
+    filtered_labels = [label for label, keep in zip(colnames_labels, nonzero_indices) if keep]
+    if len(filtered_counts) == 0:
+        st.write("You do not have any data to plot. Try to redo your refinement.")
+        return
+    
+    # configures pie chart
+    colormap=cm.get_cmap("Greens",len(colnames_list))
+    colors=[colormap(i / len(colnames_list)) for i in range(len(colnames_list))]
+    plt.figure(figsize=(6, 6))
+    plt.pie(filtered_counts, labels=filtered_labels, autopct='%1.1f%%', startangle=90, textprops={'fontsize': 5, }, labeldistance=1.05, colors=colors, wedgeprops={"edgecolor": "black", "linewidth": 1})
+    plt.title("Disease Associations")
+    plt.axis('equal')  
+    
+    st.pyplot(plt)
 
-def create_viz_dict(llm): # Creates the visualization dictionary and stores the result in the session state
-    prompt = f"""
-    You will be given a dataframe 'df' and user research question. Your goal is to suggest visualizations, graphs, charts, etc. to guide their research question and objectives.
-    User research objective: {st.session_state.user_researchquestion}\n
-    Description of column names: {st.session_state.genes_colmeta_dict}\n
-    Output format instructions: A DICTIONARY of the graph type/name as the key, and a one or two line description of the graph/visualization as the value.
-    Include a maximum of 5 different visualizations.
-    The graphs or charts must be able to be constructed from existing df columns. Keep in mind some column values may be comma delimited and contain multiple values.
-    Always include a final key-value pair that is 'I have my own idea':'User will give their own graph suggestion'
-    Output should not have any formatting characters.\n
+#builds a bar chart
+def build_visual_2(llm):
+    all_columns = list(st.session_state.merged_df.columns)
+    prompt = PromptTemplate(
+    template = """
+    - Here is a list of columns in a dataframe: {all_cols}
+    - The columns hold information relating to gene names, disease associations, biological processes, and much more.
+    - Some names contain acronyms. Try to decode these remembering that this is a biological/genetic dataset.
+    Instructions:
+                - Using the list of column names, select one column the you think is most relevant to subcellular location.
+                - Return the of the columns you found for subcellular location exactly as they are titled in the dataframe
+                - E.g. Return: ('colname_1')
+                - Return ONLY the column name with that formatting. Do not add any special characters or quotations
     """
-    viz_pandas_agent = create_pandas_dataframe_agent(
-        llm=llm,
-        df=st.session_state['user_refined_df'],
-        agent_type="tool-calling",
-        allow_dangerous_code=True,
-        include_df_in_prompt=True,
-        number_of_head_rows=10
     )
-    viz_pandas_agent.handle_parsing_errors = "Check your output and make sure it conforms to the format instructions given, use the Action Input/Final Answer syntax."
-    viz_dict_response = viz_pandas_agent.run(prompt)
-    viz_dict_response.replace("```", "").strip() 
-    # st.write(viz_dict_response)
-    viz_dict_response = ast.literal_eval(viz_dict_response) # converts llm response (string) into the dictionary literal
+    chain = prompt | llm
+    parser_output = chain.invoke({"all_cols": all_columns})
+    
+    parser_output_content = parser_output.content.strip('"')
 
-    # Store dictionary to session state to avoid rebuilding it every time the page re-runs:
-    st.session_state['viz_dict'] = viz_dict_response
+    # creates list of subcellular locations and gets counts for each location
+    all_locations = st.session_state.merged_df[parser_output_content].dropna().str.split(",")
+    flat_locations = [loc.strip() for sublist in all_locations for loc in sublist]
+    location_counts = pd.Series(flat_locations).value_counts()
+
+    # makes sure there is actually data to plot
+    nonzero_indices = location_counts > 0
+    filtered_counts = location_counts[nonzero_indices]
+    if len(filtered_counts) == 0:
+        st.write("You do not have any data to plot. Try to redo your refinement.")
+        return
+    
+    #configure bar chart
+    fig, ax = plt.subplots(figsize=(10, 6))
+    location_counts.plot(kind="bar", color="palegreen", edgecolor="black", ax=ax)
+    plt.xlabel("Subcellular Location", fontsize=12)
+    plt.ylabel("Number of Genes", fontsize=12)
+    plt.title("Distribution of Genes Across Subcellular Locations", fontsize=14)
+    plt.xticks(rotation=45, ha="right")  # Rotate labels for better readability
+    plt.grid(axis="y", linestyle="--", alpha=0.7)
+    st.pyplot(fig)
+
 
 def repeat_refinement(llm):
     if 'repeat_refinement_q_widget' not in st.session_state:
@@ -343,47 +388,40 @@ def send_genesdata():
         st.error("Failed to store data.")
 
 def analyze_data(llm):
-    create_viz_dict(llm) # Make the viz dict once initially with the default research question
+    if 'merged_df' not in st.session_state:
+         st.session_state['merged_df'] = None
 
-    st.subheader("Restate your research objectives, if desired:")
-    st.write("Default = the initial research question you provided")
-    new_researchquestion = st.text_input("E.g. 'I am interested in finding where common ALS and PD genes localize'",max_chars=500)
-    if new_researchquestion:
-        st.session_state['user_researchquestion'] = new_researchquestion
-        create_viz_dict(llm) # Runs the dictionary creation function every time a new research question is entered
-    st.write(f"**Current research question:** {st.session_state.user_researchquestion}")
+    #create a merged data frame and add to session state
+    common_columns = list(set(st.session_state.user_refined_df.columns) & set(st.session_state.genes_info_df.columns))
+    defined_merged_df = st.session_state.user_refined_df.merge(st.session_state.genes_info_df, on=common_columns, how="inner")
+    defined_merged_df = defined_merged_df.loc[:, ~defined_merged_df.columns.duplicated()]
+
+    st.session_state['merged_df'] = defined_merged_df
 
     st.divider()
-    st.subheader("(EXPERIMENTAL) Here are some suggested visualizations that might be of use to you:")
+    st.title("Data Visualization")
+    st.subheader("Here are some suggested visualizations that might be of use to you:")
 
-    # st.write(st.session_state['viz_dict'])
-    chart_names = list(st.session_state['viz_dict'].keys())
-    chart_descriptions = list(st.session_state['viz_dict'].values())
+    col1, col2 = st.columns(2)
 
-    # put expander so data can be seen
+    if 'chart_type' not in st.session_state:
+        st.session_state.chart_type = None
+
+    with col1:
+        if st.button("Pie Chart: Disease Associations"):
+            st.session_state.chart_type = "pie"
+
+    with col2:
+        if st.button("Bar Chart: Subcellular Location"):
+            st.session_state.chart_type = "bar"
+
+    if st.session_state.chart_type == "pie":
+        build_visual_1(llm=llm)
+    if st.session_state.chart_type == "bar":
+        build_visual_2(llm=llm)
     with st.expander("**Click to view data being referenced**"):
-        st.dataframe(st.session_state['user_refined_df'])
+        st.dataframe(st.session_state['merged_df'])
 
-    code_plot_output_container = st.container()
-    cols = st.columns(len(st.session_state['viz_dict'])-1) 
-    for i, col in enumerate(cols):
-        with col:
-            if st.button(chart_names[i],use_container_width=True):
-                llm_graph_output = build_graph(chart_names[i],chart_descriptions[i],llm)
-                reformatted_graph_code = llm_graph_output.replace("df", "st.session_state['user_refined_df']")
-                reformatted_graph_code.replace("```", "").strip() # remove code backticks left over
-
-                # Output results to the page container outside of the column
-                with code_plot_output_container:
-                    st.write(reformatted_graph_code)
-                    exec(reformatted_graph_code, globals())
-                    st.pyplot(plt)
-    # Always have a 6th button that lets user suggest their own visualization
-    make_own_placeholder = st.empty()
-    with make_own_placeholder:
-        if st.button(chart_names[-1],use_container_width=True):
-            st.write("pog")
-            
     st.divider()
     
     send_genes_placeholder = st.empty()
