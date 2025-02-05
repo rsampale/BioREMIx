@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import pandas as pd
 import requests
+import io
 from openai import OpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_core.prompts import PromptTemplate
@@ -165,12 +166,28 @@ def build_visual_1(llm):
     # configures pie chart
     colormap=cm.get_cmap("Greens",len(colnames_list))
     colors=[colormap(i / len(colnames_list)) for i in range(len(colnames_list))]
-    plt.figure(figsize=(6, 6))
-    plt.pie(filtered_counts, labels=filtered_labels, autopct='%1.1f%%', startangle=90, textprops={'fontsize': 5, }, labeldistance=1.05, colors=colors, wedgeprops={"edgecolor": "black", "linewidth": 1})
-    plt.title("Disease Associations")
-    plt.axis('equal')  
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.pie(
+        filtered_counts,
+        labels=filtered_labels,
+        autopct='%1.1f%%',
+        startangle=90,
+        textprops={'fontsize': 5},
+        labeldistance=1.05,
+        colors=colors,
+        wedgeprops={"edgecolor": "black", "linewidth": 1},
+    )
+    ax.set_title("Disease Associations")
+    ax.axis('equal') 
     
-    st.pyplot(plt)
+    # Save figure to BytesIO
+    img_bytes = io.BytesIO()
+    fig.savefig(img_bytes, format="png", bbox_inches="tight")
+    img_bytes.seek(0)  # Move to the beginning
+    # Store in session state
+    st.session_state["most_recent_chart_selection"] = img_bytes
+    
+    # st.pyplot(plt)
 
 #builds a bar chart
 def build_visual_2(llm):
@@ -212,7 +229,15 @@ def build_visual_2(llm):
     plt.title("Distribution of Genes Across Subcellular Locations", fontsize=14)
     plt.xticks(rotation=45, ha="right")  # Rotate labels for better readability
     plt.grid(axis="y", linestyle="--", alpha=0.7)
-    st.pyplot(fig)
+    
+    # Save the figure to a BytesIO object
+    img_bytes = io.BytesIO()
+    fig.savefig(img_bytes, format="png", bbox_inches="tight")
+    img_bytes.seek(0)  # Move to start
+    # Store in session state
+    st.session_state["most_recent_chart_selection"] = img_bytes
+    
+    # st.pyplot(fig)
 
 
 def repeat_refinement(llm):
@@ -398,28 +423,27 @@ def analyze_data(llm):
 
     st.session_state['merged_df'] = defined_merged_df
 
-    st.divider()
     st.title("Data Visualization")
-    st.subheader("Here are some suggested visualizations that might be of use to you:")
+    st.subheader("Your genes at a glance:")
 
     col1, col2 = st.columns(2)
 
-    if 'chart_type' not in st.session_state:
-        st.session_state.chart_type = None
+    if 'most_recent_chart_selection' not in st.session_state:
+        st.session_state.most_recent_chart_selection = None
 
     with col1:
-        if st.button("Pie Chart: Disease Associations"):
-            st.session_state.chart_type = "pie"
+        if st.button("Pie Chart: Disease Associations",use_container_width=True):
+            build_visual_1(llm=llm)
 
     with col2:
-        if st.button("Bar Chart: Subcellular Location"):
-            st.session_state.chart_type = "bar"
-
-    if st.session_state.chart_type == "pie":
-        build_visual_1(llm=llm)
-    if st.session_state.chart_type == "bar":
-        build_visual_2(llm=llm)
-    with st.expander("**Click to view data being referenced**"):
+        if st.button("Bar Chart: Subcellular Location",use_container_width=True):
+            build_visual_2(llm=llm)
+            
+    # Print most recent saved chart to the screen:
+    if st.session_state.most_recent_chart_selection: 
+        st.image(st.session_state.most_recent_chart_selection) # SHOULD MAKE IT SO THAT THIS GETS DELETED IF NEW REFINEMENTS ARE MADE (as it would no longer be accurate)
+        
+    with st.expander("**Click to view your current gene data**"):
         st.dataframe(st.session_state['merged_df'])
 
     st.divider()
