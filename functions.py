@@ -311,6 +311,11 @@ def chat_with_data(llm):
 
     Do not simulate data or use only the preview. You are an agent that can code has access to the real dataframe and can simply access it as the variable 'df'.
     """
+
+    alternate_prefix = """You have been provided with a pandas dataframe (named 'df'). Use that and any other knowledge you have internally to answer the following user query:
+
+    Do not simulate data or use only the preview. You are an agent that can code has access to the real dataframe and can simply access it as the variable 'df'.
+    """
     # Note that you have two dataframes you have access to. One contains genes and annotated info about those genes, and the other contains a user-uploaded gene expression
     # table with genes, logFC, padj, disease, and cell_type. Only use this expression dataframe if the user asks a question that requires it for an answer. When using it, consider only the genes
     # also present in the first dataframe.
@@ -330,7 +335,7 @@ def chat_with_data(llm):
     pd_df_agent = create_pandas_dataframe_agent( # 'SIMULATES' the data instead of really using the df unless made very clear it has access to df in the prefix
         llm=llm,
         df=st.session_state['user_refined_df'],
-        prefix=begeneral_prefix,
+        prefix=alternate_prefix,
         agent_type="tool-calling",
         allow_dangerous_code=True,
         # include_df_in_prompt=True,
@@ -339,7 +344,7 @@ def chat_with_data(llm):
     # pd_df_agent.handle_parsing_errors = True
 
     if "messages" not in st.session_state or st.sidebar.button("Clear chat history",use_container_width=True):
-        st.session_state["messages"] = [{"role": "system", "content": "Use the dataframe ('df') given to you to answer the user queries."}]
+        st.session_state["messages"] = [{"role": "system", "content": "Run code or pandas expressions on the dataframe ('df') given to you to answer the user queries."}]
     
     for msg in st.session_state.messages:
         if msg["role"] != "system":
