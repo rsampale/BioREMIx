@@ -269,7 +269,7 @@ def repeat_refinement(llm):
                 Instructions: 
                 - Given the user refinement statement above and the dataframe you were given, return the pandas expression required to achieve this.
                 - Keep in mind some column values may be comma or otherwise delimited and contain multiple values.
-                - Return only the code in your reply
+                - Return only the code in your reply. The final df should be called df.
                 - Do not include any additional formatting, such as markdown code blocks
                 - For formatting do not allow any lines of code to exceed 80 columns
                 - Example: E.g. you might return df_y = dfx[dfx['blah'] == 'foo']
@@ -309,8 +309,7 @@ def chat_with_data(llm):
     a more general question about a gene, possible associations, biological process, etc. just use your internal knowledge. You can also mix the two sources of info,
     but then be clear where you are getting your information from. Try to keep responses relatively short unless asked for more information or told otherwise.
 
-    Do not simulate data. You are an agent that has access to the real dataframe and can simply access it as the variable df.
-    NEVER INCLUDE BACKQUOTES ('`') IN YOUR OUTPUT.
+    Do not simulate data or use only the preview. You are an agent that can code has access to the real dataframe and can simply access it as the variable 'df'.
     """
     # Note that you have two dataframes you have access to. One contains genes and annotated info about those genes, and the other contains a user-uploaded gene expression
     # table with genes, logFC, padj, disease, and cell_type. Only use this expression dataframe if the user asks a question that requires it for an answer. When using it, consider only the genes
@@ -326,7 +325,7 @@ def chat_with_data(llm):
         include_df_in_prompt=True,
         number_of_head_rows=15
     )
-    non_toolcalling_agent.handle_parsing_errors = "Check your output and make sure it answers the user query, use the Action Input/Final Answer syntax"
+    # non_toolcalling_agent.handle_parsing_errors = "Check your output and make sure it answers the user query and is a valid JSON object wrapped in triple backticks, use the Action Input/Final Answer syntax"
 
     pd_df_agent = create_pandas_dataframe_agent( # 'SIMULATES' the data instead of really using the df unless made very clear it has access to df in the prefix
         llm=llm,
@@ -340,7 +339,7 @@ def chat_with_data(llm):
     # pd_df_agent.handle_parsing_errors = True
 
     if "messages" not in st.session_state or st.sidebar.button("Clear chat history",use_container_width=True):
-        st.session_state["messages"] = [{"role": "system", "content": "You are an AI assistant tasked to help a user gain insights from their data, and answer any of their questions. You already have access to a dataframe full of genes and annotation data to help."}]
+        st.session_state["messages"] = [{"role": "system", "content": "Use the dataframe ('df') given to you to answer the user queries."}]
     
     for msg in st.session_state.messages:
         if msg["role"] != "system":
