@@ -10,6 +10,7 @@ from openai import OpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_core.prompts import PromptTemplate
 from langchain.callbacks.streamlit import StreamlitCallbackHandler # deprecated
+from rag import col_retrieval_rag
 
 def authenticate():
     # placeholders variables for UI 
@@ -297,7 +298,7 @@ def repeat_refinement(llm):
 
     st.divider()
 
-def chat_with_data(llm):
+def chat_with_data(llm, rag_llm):
     
     PERPLEXITY_API_KEY = st.secrets["PERPLEXITY_API_KEY"]
     if not PERPLEXITY_API_KEY:
@@ -316,12 +317,41 @@ def chat_with_data(llm):
 
     Do not simulate data or use only the preview. You are an agent that can code has access to the real dataframe and can simply access it as the variable 'df'.
     """
+    alternate_prefix2 = """You have been provided with two pandas dataframes, df1 and df2. df1 contains rows of genes and columns of associated metadata/annotations. df2 contains expression data like logfc, padj, and the disease in the comparison.
+    There may or may not be some overlap in the genes between the two.
+
+    Use those dataframes and any other knowledge you have internally to answer the user query that will follow:
+
+    Do not simulate data or use only the preview. You are an agent that can code has access to the real dataframes with the names provided above.
+    """
     # Note that you have two dataframes you have access to. One contains genes and annotated info about those genes, and the other contains a user-uploaded gene expression
     # table with genes, logFC, padj, disease, and cell_type. Only use this expression dataframe if the user asks a question that requires it for an answer. When using it, consider only the genes
     # also present in the first dataframe.
 
     online_search = st.sidebar.toggle("Toggle Perplexity Online Search")
 
+    # if "messages" not in st.session_state or st.sidebar.button("Clear chat history",use_container_width=True):
+    #     st.session_state["messages"] = [{"role": "system", "content": "Run code or pandas expressions on the dataframe ('df') given to you to answer the user queries."}]
+    if "messages" not in st.session_state or st.sidebar.button("Clear chat history",use_container_width=True):
+        st.session_state["messages"] = [{"role": "system", "content": "Run code or pandas expressions on the dataframes ('df1' and 'df2') given to you to answer the user queries. Assume the user is talking about 'their' genes in df1 unless they are referencing expression."}]
+    
+    for msg in st.session_state.messages:
+        if msg["role"] != "system":
+            st.chat_message(msg["role"]).write(msg["content"])
+            # writes the user's progress -S
+
+    if prompt := st.chat_input(placeholder="What is this data about?"):
+        # Tack on instructions to the beginning of prompt HERE
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.chat_message("user").write(prompt)
+
+    #     # RUN AN OPENAIEMBEDDINGS RAG CALL AGAINST COLUMN METADATA TO DETERMINE COLUMNS TO USE AND FORMAT CONSIDERATIONS:
+    #     column_helper_text = col_retrieval_rag(prompt, rag_llm)
+    #     suffix = "Consider using the following information to inform your dataframe operations, if you need to make any: \n" + column_helper_text
+    # else:
+    #     suffix = "" # agent needs a valid suffix when created even when no user prompt yet
+
+    # Create the agent used for chat retrieval with df access
     non_toolcalling_agent = create_pandas_dataframe_agent(
         llm=llm,
         df=st.session_state['user_refined_df'],
@@ -334,28 +364,17 @@ def chat_with_data(llm):
 
     pd_df_agent = create_pandas_dataframe_agent( # 'SIMULATES' the data instead of really using the df unless made very clear it has access to df in the prefix
         llm=llm,
-        df=st.session_state['user_refined_df'],
-        prefix=alternate_prefix,
+        df=[st.session_state['user_refined_df'],st.session_state['expression_df']],
+        prefix=alternate_prefix2,
         agent_type="tool-calling",
         allow_dangerous_code=True,
-        # include_df_in_prompt=True,
-        # number_of_head_rows=5
+        include_df_in_prompt=True,
+        number_of_head_rows=5
+        # suffix=suffix
     )
     # pd_df_agent.handle_parsing_errors = True
 
-    if "messages" not in st.session_state or st.sidebar.button("Clear chat history",use_container_width=True):
-        st.session_state["messages"] = [{"role": "system", "content": "Run code or pandas expressions on the dataframe ('df') given to you to answer the user queries."}]
-    
-    for msg in st.session_state.messages:
-        if msg["role"] != "system":
-            st.chat_message(msg["role"]).write(msg["content"])
-            # writes the user's progress -S
-
-    if prompt := st.chat_input(placeholder="What is this data about?"):
-        # Tack on instructions to the beginning of prompt HERE
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        st.chat_message("user").write(prompt)
-
+    # Chat loop/logic
     with st.chat_message("assistant"):
         
         # with st.expander("session_state.messages:",expanded=False):
@@ -363,6 +382,7 @@ def chat_with_data(llm):
         # st.write(len(st.session_state.messages)) # is 1 before user provides anything
 
         if len(st.session_state.messages) > 1:
+            # st.write(suffix)
             # USE INTERNET/PERPLEXITY IF TOGGLE IS ON
             if not online_search:
                 if st.session_state.messages[-1]["role"] == "user": 
