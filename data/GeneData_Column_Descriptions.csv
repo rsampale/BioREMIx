@@ -1,57 +1,57 @@
 ﻿Colname,Description
-Uniprot.ID,Unique identifier assigned to the protein by UniProt.
-Gene.Name,Official gene symbol associated with the protein.
-Full.protein.name,Full name of the protein as listed in UniProt.
-Protein.length,Total number of amino acids in the protein sequence.
-Active.site.residues,Residues that form the active site of the protein and any associated notes about the site.
-Binding.site.residues,Residues that form the binding site of the protein (and ligands at those sites)
-Alternative.isoforms,Alternative products or isoforms that the gene can produce. Begins with 'ALTERNATIVE PRODUCTS: '
-Interacts.with,Any other proteins that the gene/protein product may interact with.
-Tissues,The body tissues that the gene is specific to. Begins with 'TISSUE SPECIFICITY: '
-Biological.processes,Biological processes (e.g. x catabolic process or y metabolic process) the gene is involved in.
-Molecular.function,"The molecular function or activity the gene product is involved in. E.g. endopolyphosphatase activity, etc."
-Transmembrane.domain.residues,Residues that form the transmembrane domain of the gene product. Begins with 'TRANSMEM'.
-Intramembrane.residues,Residues that form the intermembrane domain of the gene product. Begins with 'INTRAMEM'.
-Glycosylation.residues,Residues involved in glycosylation. Begins with 'CARBOHYD'.
-Modified.residues,Residues that have evidence of being modified (and what the modification is). Begins with 'MOD_RES'.
-Post.translational.modifications,Residues that have evidence of post translational modifications (and what the modification is). Begins with 'PTM'.
-Signal.peptide.residues,Residues/region involved in protein/molecule signaling. Begins with 'SIGNAL'.
-Propeptide.residues,Residues/region forming the propeptide. Begins with 'PROPEP'.
-Lipidation.residues,Residues involved in lipidation. Begins with 'LIPID'.
-Disulfide.bond.residues,Residues that form disulfide bonds. Begins with 'DISULFID'.
-Motifs,Describes a short conserved sequence motif of biological significance. Begins with 'MOTIF'
-Protein.families,Any families the protein is a part of.
-Zinc.finger.residues,Residues/region involved in protein/molecule signaling. Begins with 'SIGNAL'.
-Compositional.bias,Regions of compositional bias within the protein and the particular type of amino acids that are over-represented within those regions. Begins with 'COMPBIAS'
-Domain.Notes,Any notes or descriptions about a proteins domains. Begins with 'DOMAIN'.
-Repeat.region.residues,Region of the sequence with repeats.Begins with 'REPEAT'.
-Coiled.coil.residues,Residues/region involved that form coiled coil motifs. Begins with 'COILED'.
-Transit.peptide.residues,Residues/regionwhich form the transit peptide. Begins with 'TRANSIT'.
-Cross.linking.residues,Residues that form cross links. Begins with 'CROSSLNK'.
-Method.of.induction,Method of gene induction. What causes the gene to be expressed. Begins with 'INDUCTION'.
-Protein.pathways,The protein pathways that the gene product is involved in. Begins with 'PATHWAY'.
-Activity.regulation,How the protein is regulated by other proteins/molecules. Begins with 'ACTIVITY REGULATION: '.
-Catalytic.activity,"Description of the gene product's catalytic activity, if any. Begins with 'CATALYTIC ACTIVITY: '"
-DNA.binding,Residues/region involved in binding DNA. Begins with 'DNA_BIND '
-EC.number,Enzyme commission number (if any).
-Cofactors,Cofactors or essential molecules required for protein activity.
-MIM.Number,Unique identifier for a genetic condition or gene in the Online Mendelian Inheritance in Man (OMIM) database
-Chromosome,Chromosome that the gene is found on.
-Genomic.Position.Start,Genomic start position of the gene.
-Genomic.Position.End,Genomic end position of the gene.
-Entrez.ID,Entrez ID for the gene.
-Ensembl.ID,Ensembl database identifier for the gene.
-Subcellular.location,Organelle or cellular compartment that the gene product localizes to.
-Sub.mitochondria.localization,"For mitochondria localizing genes, the sub mitochondrial compartment where the gene is found,"
-Mitochondria.pathways,"For mitochondria localizing genes, the mitochondrial pathways the gene/gene product is involved in."
-Protein.class,"The protein class of the disease product. E.g. Enzymes, disease related genes, predicted membrane proteins, transporters, etc."
-RNA.tissue.specificity,Whether the gene has high or low tissue specificity.
-Cell.type.specificity,The cell type that a gene is specific to (if any).
-Antibody,Antibody identifier(s).
+Uniprot.ID,Unique identifier assigned to the protein by UniProt. E.g. A0A024R1R8
+Gene.Name,Official gene symbol associated with the protein. E.g. TMA7B
+Full.protein.name,Full name of the protein as listed in UniProt. E.g. Translation machinery-associated protein 7B
+Protein.length,Total number of amino acids in the protein sequence. e.g. '117'
+Active.site.residues,Residues that form the active site of the protein and any associated notes about the site. E.g. ACT_SITE 69; /note=Proton acceptor; /evidence=ECO:0000250
+Binding.site.residues,Residues that form the binding site of the protein (and ligands at those sites). E.g. BINDING 10; /ligand=substrate; /evidence=ECO:0000250|UniProtKB:O95989; BINDING 18..20; /ligand=substrate; /evidence=ECO:0000250|UniProtKB:O95989
+Alternative.isoforms,Alternative products or isoforms that the gene can produce. Begins with 'ALTERNATIVE PRODUCTS: ' even if there are no isoforms (would be blank after). E.g. ALTERNATIVE PRODUCTS:  Event=Alternative splicing; Named isoforms=2; Name=1; IsoId=A0A096LP49-1; Sequence=Displayed; Name=2; IsoId=A0A096LP49-2; Sequence=VSP_058066; 
+Interacts.with,Any other proteins that the gene/protein product may interact with. E.g. Q96S66
+Tissues,"The body tissues that the gene is specific to. Begins with 'TISSUE SPECIFICITY: ' E.g. TISSUE SPECIFICITY: Detected in plasma (at protein level) (PubMed:25738459, PubMed:32182209). Also expressed in skeletal muscle (at protein level) (PubMed:32182209). {ECO:0000269|PubMed:25738459, ECO:0000269|PubMed:32182209}."
+Biological.processes,Biological processes (e.g. x catabolic process or y metabolic process) the gene is involved in. E.g. regulation of endoplasmic reticulum unfolded protein response [GO:1900101]; response to unfolded protein [GO:0006986]
+Molecular.function,"The molecular function or activity the gene product is involved in. E.g. endopolyphosphatase activity, etc. E.g. ATP binding [GO:0005524]; identical protein binding [GO:0042802]; threonine-tRNA ligase activity [GO:0004829]"
+Transmembrane.domain.residues,Residues that form the transmembrane domain of the gene product. Begins with 'TRANSMEM'. E.g. TRANSMEM 104..124; /note=Helical; /evidence=ECO:0000255
+Intramembrane.residues,Residues that form the intermembrane domain of the gene product. Begins with 'INTRAMEM'. E.g. INTRAMEM 173..220; /evidence=ECO:0000305|PubMed:29915090
+Glycosylation.residues,Residues involved in glycosylation. Begins with 'CARBOHYD'. E.g. CARBOHYD 124; /note=N-linked (GlcNAc...) asparagine; /evidence=ECO:0000255; CARBOHYD 125; /note=N-linked (GlcNAc...) asparagine; /evidence=ECO:0000255
+Modified.residues,Residues that have evidence of being modified (and what the modification is). Begins with 'MOD_RES'. E.g. MOD_RES 111; /note=Phosphoserine; by PKG; /evidence=ECO:0000250|UniProtKB:P55088; MOD_RES 180; /note=Phosphoserine; by PKC; /evidence=ECO:0000250|UniProtKB:P47863
+Post.translational.modifications,Residues that have evidence of post translational modifications (and what the modification is). Begins with 'PTM'. E.g. PTM: Phosphorylated by tyrosine kinases in response to T-cell antigen receptor activation. Phosphorylated in mitotic cells. {ECO:0000250|UniProtKB:P46462}.; PTM: ISGylated. {ECO:0000269|PubMed:16139798}.
+Signal.peptide.residues,Residues/region involved in protein/molecule signaling. Begins with 'SIGNAL'. E.g. SIGNAL 1..18; /evidence=ECO:0000255
+Propeptide.residues,Residues/region forming the propeptide. Begins with 'PROPEP'. E.g. PROPEP 21..169; /evidence=ECO:0000255; /id=PRO_0000003749
+Lipidation.residues,Residues involved in lipidation. Begins with 'LIPID'. E.g. LIPID 361; /note=S-palmitoyl cysteine; /evidence=ECO:0000269|PubMed:21627585
+Disulfide.bond.residues,Residues that form disulfide bonds. Begins with 'DISULFID'. E.g. DISULFID 73..124; /evidence=ECO:0000255|PROSITE-ProRule:PRU00114
+Motifs,Describes a short conserved sequence motif of biological significance. Begins with 'MOTIF' E.g. MOTIF 26..28; /note=Cell attachment site; /evidence=ECO:0000255
+Protein.families,Any families the protein is a part of. E.g. Sauvagine/corticotropin-releasing factor/urotensin I family
+Zinc.finger.residues,Residues/region involved in protein/molecule signaling. Begins with 'ZN_FING'. E.g. ZN_FING 22..74; /note=PHD-type 1; /evidence=ECO:0000255|PROSITE-ProRule:PRU00146; ZN_FING 79..112; /note=C2HC pre-PHD-type; /evidence=ECO:0000255|PROSITE-ProRule:PRU01146
+Compositional.bias,Regions of compositional bias within the protein and the particular type of amino acids that are over-represented within those regions. Begins with 'COMPBIAS'. E.g. COMPBIAS 291..306; /note=Polar residues; /evidence=ECO:0000256|SAM:MobiDB-lite; COMPBIAS 339..451; /note=Polar residues; /evidence=ECO:0000256|SAM:MobiDB-lite
+Domain.Notes,"Any notes or descriptions about a proteins domains. Begins with 'DOMAIN'. E.g. DOMAIN: The intra-membrane loop at the C-terminus acts as a calcium pore, mediating calcium leak from the ER into the cytosol. {ECO:0000269|PubMed:22128171}."
+Repeat.region.residues,Region of the sequence with repeats.Begins with 'REPEAT'. E.g. REPEAT 41..69; /note=ANK 1; REPEAT 73..102; /note=ANK 2; REPEAT 106..135; /note=ANK 3; REPEAT 138..166; /note=ANK 4
+Coiled.coil.residues,Residues/region involved that form coiled coil motifs. Begins with 'COILED'. E.g. COILED 146..185; /evidence=ECO:0000255; COILED 1408..1448; /evidence=ECO:0000255; COILED 1523..1667; /evidence=ECO:0000255
+Transit.peptide.residues,"Residues/regionwhich form the transit peptide. Begins with 'TRANSIT'. E.g. TRANSIT 1..33; /note=Mitochondrion; /evidence=ECO:0000269|PubMed:12665801, ECO:0007744|PubMed:25944712"
+Cross.linking.residues,Residues that form cross links. Begins with 'CROSSLNK'. E.g. CROSSLNK 384; /note=Glycyl lysine isopeptide (Lys-Gly) (interchain with G-Cter in SUMO2); /evidence=ECO:0007744|PubMed:28112733; CROSSLNK 408; /note=Glycyl lysine isopeptide (Lys-Gly) (interchain with G-Cter in SUMO2); /evidence=ECO:0007744|PubMed:28112733
+Method.of.induction,"Method of gene induction. What causes the gene to be expressed. Begins with 'INDUCTION'. E.g. INDUCTION: Isoform 1 is induced by interferon alpha. Isoform 5 is constitutively expressed. {ECO:0000269|PubMed:10200312, ECO:0000269|PubMed:7565688}."
+Protein.pathways,The protein pathways that the gene product is involved in. Begins with 'PATHWAY'. E.g. PATHWAY: Purine metabolism; AMP biosynthesis via salvage pathway; AMP from adenosine: step 1/1.
+Activity.regulation,"How the protein is regulated by other proteins/molecules. Begins with 'ACTIVITY REGULATION: '. E.g. ACTIVITY REGULATION: Activated upon interaction by mucunain, a cowhage (Mucuna pruriens) plant cysteine proteinase. {ECO:0000269|PubMed:18434511}."
+Catalytic.activity,"Description of the gene product's catalytic activity, if any. Begins with 'CATALYTIC ACTIVITY: ' E.g. CATALYTIC ACTIVITY: Reaction=H2O(in) = H2O(out); Xref=Rhea:RHEA:29667, ChEBI:CHEBI:15377; Evidence={ECO:0000269|PubMed:18768791, ECO:0000269|PubMed:23867895, ECO:0000269|PubMed:8621489};"
+DNA.binding,Residues/region involved in binding DNA. Begins with 'DNA_BIND '. E.g. DNA_BIND 259..321; /note=Homeobox; TALE-type; /evidence=ECO:0000255|PROSITE-ProRule:PRU00108
+EC.number,Enzyme commission number (if any). E.g. '2.7.11.13'
+Cofactors,Cofactors or essential molecules required for protein activity. E.g. COFACTOR: Name=Zn(2+); Xref=ChEBI:CHEBI:29105; Evidence={ECO:0000305}; Note=Binds 1 zinc ion per subunit. {ECO:0000305};
+MIM.Number,Unique identifier for a genetic condition or gene in the Online Mendelian Inheritance in Man (OMIM) database. E.g. '600639'
+Chromosome,Chromosome that the gene is found on. E.g. 'chr2'
+Genomic.Position.Start,Genomic start position of the gene. E.g.' 38561542'
+Genomic.Position.End,Genomic end position of the gene. E.g. '153489615'
+Entrez.ID,Entrez ID for the gene. E.g. '729230'
+Ensembl.ID,Ensembl database identifier for the gene. E.g. ENSG00000135914
+Subcellular.location,"Organelle or cellular compartment(s) that the gene product localizes to. E.g. Microtubules,Cytokinetic bridge,Cytosol"
+Sub.mitochondria.localization,"For mitochondria localizing genes, the sub mitochondrial compartment where the gene is found. E.g. Matrix"
+Mitochondria.pathways,"For mitochondria localizing genes, the mitochondrial pathways the gene/gene product is involved in. E.g. Metabolism > Lipid metabolism > Fatty acid oxidation"
+Protein.class,"The protein class of the disease product. E.g. Enzymes, disease related genes, predicted membrane proteins, transporters, etc. E.g. 'Enzymes, Metabolic proteins, Plasma proteins, Predicted intracellular proteins'"
+RNA.tissue.specificity,Whether the gene has high or low tissue specificity. E.g. 'Low tissue specificity' or 'Tissue enhanced' or 'Group enhanced'
+Cell.type.specificity,The cell type(s) that a gene is specific to (if any). E.g. Cardiomyocytes: 26.2;dendritic cells: 81.0;Ovarian stromal cells: 103.4
+Antibody,Antibody identifier(s). E.g. HPA048636
 CMT,The gene is associated with Charcot-Marie-Tooth (CMT) disease. 1 if associated.
-Giwon.list,Gene is a part of Giwon's list.
-Robi.list,Gene is a part of Rob's list.
-Jeff.list,Gene is a part of Jeff's list.
+Giwon.list,Gene is a part of Giwon's list. 1 if true
+Robi.list,Gene is a part of Rob's list. 1 if true
+Jeff.list,Gene is a part of Jeff's list. 1 if true
 ALS,The gene is associated with Amyotrophic lateral sclerosis (ALS) disease. 1 if associated.
 dHMN,The gene is associated with a distal hereditary motor neuropathy (dHMN) disease. 1 if associated.
 HSP,The gene is associated with Henoch-Schönlein Purpura (HSP) disease. 1 if associated.
@@ -61,5 +61,5 @@ SCA,The gene is associated with Spinocerebellar Ataxia (SCA) disease. 1 if assoc
 Diabetes,The gene is associated with Diabetes disease. 1 if associated.
 Cancer.related,The gene is associated with Cancer. 1 if associated.
 Other.disease,The gene is associated with some other disease. 1 if associated.
-NDD.count,Number of neurodegenerative diseases the gene is associated with.
-Gene.of.interest,Whether the gene is one of the MGI's genes of interest.
+NDD.count,Number of neurodegenerative diseases (NDDs) the gene is associated with.
+Gene.of.interest,Whether the gene is one of the MGI's genes of interest. 1 if true

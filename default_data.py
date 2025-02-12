@@ -2,12 +2,7 @@ import streamlit as st
 import pandas as pd
 
 # imports for vectorstore/rag:
-from langchain_openai import OpenAIEmbeddings
-import faiss
-from langchain_community.vectorstores import FAISS
-from langchain.schema import Document
-from langchain_openai import ChatOpenAI
-from langchain.chains import retrieval_qa
+from rag import create_colname_vectorstore
 
 
 def load_default_data():
@@ -46,12 +41,11 @@ def load_default_data():
             colmeta_df = colmeta_df[colmeta_df['Drop.Column'] != 'yes']
         colmeta_df['Description'] = colmeta_df['Description'].fillna(colmeta_df['Colname']) # if blank, just use the colname as the description, NOTE MIGHT BREAK IN PANDAS 3
         colmeta_dict = pd.Series(colmeta_df['Description'].values, index=colmeta_df['Colname']).to_dict()
-        if 'colmeta_dict' not in st.session_state:
-            st.session_state['colmeta_dict'] = colmeta_dict
         
         genes_df = pd.read_csv(file_name,low_memory=False)
         genes_df = genes_df[list(colmeta_dict.keys())] # Keep only the relevant columns, as determined by the colmeta file
         genes_df.columns = genes_df.columns.str.replace('.', '_')
+        colmeta_df['Colname'] = colmeta_df['Colname'].str.replace('.', '_', regex=False)
         
         expression_df = pd.read_csv(expression_file_name)
 
@@ -60,24 +54,6 @@ def load_default_data():
         st.session_state['genes_colmeta_dict'] = colmeta_dict
         st.session_state['genes_colmeta_df'] = colmeta_df
         st.session_state['expression_df'] = expression_df
+        create_colname_vectorstore()
     except:
         print("Error loading the default genes/info data.")
-
-def create_colname_vectorstore():
-    docs = []
-    for _, row in st.session_state.genes_colmeta_df.iterrows():
-        text = f"Column Name: {row['Colname']}\nDescription: {row['Description']}"
-        doc = Document(
-            page_content=text,
-            metadata={
-                "Colname": row['Colname'],
-            }
-        )
-        docs.append(doc)
-
-    st.session_state['docs'] = docs
-    embeddings = OpenAIEmbeddings(openai_api_key=st.secrets.OPENAI_API_KEY, model="text-embedding-3-large")
-    if "vectorstore" not in st.session_state:
-        st.session_state["colname_vectorstore"] = FAISS.from_documents(docs, embeddings)
-
-    # st.write(st.session_state.colname_vectorstore)

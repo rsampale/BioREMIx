@@ -62,6 +62,7 @@ if st.session_state['authenticated']:
     llm_o1mini = ChatOpenAI(temperature=1,model='o1-mini', openai_api_key=OPENAI_API_KEY) # Actually might work now, but takes a long time. Investigate further by printing response.
     llm_o1prev = ChatOpenAI(temperature=1,model='o1-preview', openai_api_key=OPENAI_API_KEY)
     llm_o3_mini = ChatOpenAI(temperature=0, model='o3-mini', openai_api_key=OPENAI_API_KEY) # no access yet as of 02/03/25
+    rag_llm = ChatOpenAI(openai_api_key = st.secrets.OPENAI_API_KEY, model = "gpt-4o-mini")
 
     # PAGE FORMAT CODE START
     # Make into invisible container so it can be hidden with appropriate buttons?
@@ -232,7 +233,7 @@ if st.session_state['authenticated']:
             repeat_refinement(llm=llm_4o)
 
         if st.session_state['data_chat']:
-            chat_with_data(llm=llm_4o)
+            chat_with_data(llm=llm_4o, rag_llm=llm_4o)
 
         if st.session_state['analyze_data']:
             analyze_data(llm=llm_4o)

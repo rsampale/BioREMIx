@@ -14,11 +14,9 @@ from langchain import hub
 from default_data import create_colname_vectorstore, load_default_data
 
 load_default_data()
-create_colname_vectorstore()
 
 
-
-llm = ChatOpenAI(openai_api_key = st.secrets.OPENAI_API_KEY, model = "gpt-4o")
+llm = ChatOpenAI(openai_api_key = st.secrets.OPENAI_API_KEY, model = "gpt-4o-mini")
 retrieval_qa_chat_prompt = hub.pull("langchain-ai/retrieval-qa-chat")
 retriever = st.session_state.colname_vectorstore.as_retriever(search_kwargs={"k": 10})
 
