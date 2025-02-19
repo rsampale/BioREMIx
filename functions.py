@@ -114,11 +114,13 @@ def undo_last_refinement(refinement):
             st.session_state.gene_df_history.pop()
         st.session_state.user_refinement_q = None
         st.session_state.skipped_initial_refine = False
+        st.session_state.last_pandas_code = None
     elif refinement == "repeat":
         if len(st.session_state.gene_df_history) > 1:
             st.session_state.gene_df_history.pop()
             st.session_state.user_refined_df = st.session_state.gene_df_history[-1][0] # Gets the df part of the most recent tuple in the history
             st.session_state.last_refinement_q = st.session_state.gene_df_history[-1][1]
+            st.session_state.last_pandas_code = st.session_state.gene_df_history[-1][2]
 
 # builds a pie chart for disease association
 def build_visual_1(llm):
@@ -283,14 +285,17 @@ def repeat_refinement(llm):
         # st.write(f"Code to be evaluated:{pandas_code_only}")
         user_refined_df = eval(pandas_code_only)
         st.session_state['user_refined_df'] = user_refined_df
+        st.session_state['last_pandas_code'] = pandas_code_only
 
         # Add to history
-        st.session_state.gene_df_history.append((st.session_state['user_refined_df'],st.session_state['last_refinement_q']))
+        st.session_state.gene_df_history.append((st.session_state['user_refined_df'],st.session_state['last_refinement_q'],st.session_state['last_pandas_code']))
         st.session_state['last_refinement_q'] = st.session_state.gene_df_history[-1][1]
     
     st.subheader("Instructions:")
     st.write("**Press enter to submit a refinement. Repeat as many times as needed.**")
     st.header("Current refined data:")
+    with st.expander("**Click** to see most recent filter code",expanded=False):
+        st.write(st.session_state['last_pandas_code'])
     # st.write(f"len of gene_df_history: {len(st.session_state.gene_df_history)}")
     # st.write(f"Query at top of history: {st.session_state.gene_df_history[-1][1]}")
     st.dataframe(st.session_state.user_refined_df) # maybe change to point to most recent df on history?
@@ -414,8 +419,7 @@ def chat_with_data(llm, rag_llm):
 def send_genesdata():
     gene_list = list(st.session_state['user_refined_df']['Gene_Name']) # HARDCODED SO WONT WORK IF USER DF DOESNT HAVE THIS NAME FOR GENE COLUMN
     
-    # DDB_GENESLIST_API_URL = "https://9icpbd78nf.execute-api.us-east-1.amazonaws.com/prod"
-    DDB_GENESLIST_API_URL = "https://9icpbd78nf.execute-api.us-east-1.amazonaws.com/proxy_prod"
+    DDB_GENESLIST_API_URL = st.secrets["DDB_GENESLIST_API_URL"]
     
     payload = {
         "values": gene_list  # Only include the values list here

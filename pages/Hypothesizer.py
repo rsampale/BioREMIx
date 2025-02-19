@@ -48,6 +48,8 @@ if st.session_state['authenticated']:
         st.session_state['skipped_col_filter'] = False
     if 'skipped_initial_refine' not in st.session_state:
         st.session_state["skipped_initial_refine"] = False
+    if 'last_pandas_code' not in st.session_state: # So that users can see the most recent pandas code executed
+        st.session_state['last_pandas_code'] = None
     if 'gene_df_history' not in st.session_state: # STORES PAST AND PRESENT GENE DFs TO ALLOW FOR UNDOs
         st.session_state['gene_df_history'] = deque(maxlen=7)
 
@@ -191,15 +193,18 @@ if st.session_state['authenticated']:
                 pandas_code_only = pandas_code_only.rstrip('`') # remove code backticks left over
                 # st.write(f"Code to be evaluated:{pandas_code_only}") # FOR DEBUGGING LLM OUTPUT
                 user_refined_df = eval(pandas_code_only)
+                st.session_state['last_pandas_code'] = pandas_code_only
                 st.session_state['user_refined_df'] = user_refined_df
 
             if st.session_state['user_refinement_q'] or st.session_state['skipped_initial_refine']: # Only show buttons if user has either given a refinement or skipped that step
                 # Add the current user_refined_df (whether with rows filtered or not) to the history (used for repeat refine, not here):
-                st.session_state.gene_df_history.append((st.session_state['user_refined_df'],st.session_state['user_refinement_q'])) # Append to history a tuple of (df, most recent refinement)
+                st.session_state.gene_df_history.append((st.session_state['user_refined_df'],st.session_state['user_refinement_q'],st.session_state['last_pandas_code'])) # Append to history a tuple of (df, most recent refinement, most recent code expr)
 
                 # Show either the updated refined dataframe or the full one with whatever columns were filtered (if any)
                 st.subheader("Data with any row/gene refinements:")
                 # st.write(len(st.session_state.gene_df_history))
+                with st.expander("**Click** to see most recent filter code",expanded=False):
+                    st.write(st.session_state['last_pandas_code'])
                 st.dataframe(st.session_state.user_refined_df)
                 
                 # Button to undo last refinement:
