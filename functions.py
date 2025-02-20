@@ -1,17 +1,21 @@
 import streamlit as st
 import time
 import ast
+import itertools
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import matplotlib.colors as mcolors
+import numpy as np
 import pandas as pd
 import requests
 import io
 from openai import OpenAI
+from matplotlib_set_diagrams import EulerDiagram, VennDiagram
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_core.prompts import PromptTemplate
 from langchain.callbacks.streamlit import StreamlitCallbackHandler # deprecated
 from rag import col_retrieval_rag
-
+from venn import venn
 def authenticate():
     # placeholders variables for UI 
     title_placeholder = st.empty()
@@ -71,6 +75,7 @@ def refineloop_buttonclick(): # SHOULD MAKE THESE JUST TOGGLE MAYBE INSTEAD OF H
     st.session_state['show_refine_chat_buttons'] = False
     st.session_state['data_chat'] = False
     st.session_state['analyze_data'] = False
+    st.session_state["most_recent_chart_selection"] = None
 
 def chat_buttonclick():
     st.session_state['refine_section_visible'] = False
@@ -80,6 +85,7 @@ def chat_buttonclick():
     st.session_state['show_refine_chat_buttons'] = False
     st.session_state['data_chat'] = True
     st.session_state['analyze_data'] = False
+    st.session_state["most_recent_chart_selection"] = None
 
 def analyze_buttonclick():
     st.session_state['refine_section_visible'] = False
@@ -124,6 +130,7 @@ def undo_last_refinement(refinement):
 
 # builds a pie chart for disease association
 def build_visual_1(llm):
+
     all_columns = list(st.session_state.merged_df.columns)
     prompt = PromptTemplate(
     template = """
@@ -133,7 +140,7 @@ def build_visual_1(llm):
     Instructions:
                 - Using the list of column names, select any column names you think might be relevant to diseases associated with a gene
                 - Try to find columns related to neurodegenerative diseases such as SMA, SCA, ALS, juvenile ALS, parkinson, alzeimer, HSP, CMT, dHMN, and possibly others if they are present
-                - Do not include any super ambiguous column name like curated diseases, any disease designation, or other diseases. Only include column names that seem related to very specific diseases
+                - Do not include any super ambiguous column name like curated diseases, any disease designation, NDD count, or other diseases. Only include column names that seem related to very specific diseases
                 - Do not include cancer or diabetes related columns
                 - Never include the column for a gene name. Only include columns for disease names
                 - Return two lists in a tuple. The first should be the real column names, the second should be the plot labels for these names (thus should be better formatted without underscores, etc.)
@@ -154,9 +161,15 @@ def build_visual_1(llm):
     # creates new df with only disease columns and adds to session state
     relevant_cols_only_df = st.session_state.merged_df[colnames_list]
     st.session_state['relevant_cols_only_df'] = relevant_cols_only_df
+    
+    # st.dataframe(st.session_state['relevant_cols_only_df'])
 
     # counts disease associations
     string_counts = relevant_cols_only_df.apply(lambda col: (col == 1).sum())
+
+    # remove diseases that have 0 count
+    string_counts = string_counts[string_counts > 0]
+    # st.write(string_counts)
     
     # makes sure there is data to display (prevents displaying labels for 0 slices)
     nonzero_indices = string_counts > 0
@@ -165,7 +178,7 @@ def build_visual_1(llm):
     if len(filtered_counts) == 0:
         st.write("You do not have any data to plot. Try to redo your refinement.")
         return
-    
+
     # configures pie chart
     colormap=cm.get_cmap("Greens",len(colnames_list))
     colors=[colormap(i / len(colnames_list)) for i in range(len(colnames_list))]
@@ -182,6 +195,7 @@ def build_visual_1(llm):
     )
     ax.set_title("Disease Associations")
     ax.axis('equal') 
+
     
     # Save figure to BytesIO
     img_bytes = io.BytesIO()
@@ -190,10 +204,110 @@ def build_visual_1(llm):
     # Store in session state
     st.session_state["most_recent_chart_selection"] = img_bytes
     
-    # st.pyplot(plt)
+    st.pyplot(plt)
+
+    disease_sets = {
+        disease: set(st.session_state['relevant_cols_only_df'].index[st.session_state['relevant_cols_only_df'][disease] == 1]) for disease in st.session_state['relevant_cols_only_df'].columns
+    }
+    disease_sets = {disease: genes for disease, genes in disease_sets.items() if genes}
+
+    # create labels for euler diagram
+    disease_list = list(disease_sets.keys())
+    disease_list_labels = [disease.replace("_", " ") for disease in disease_list]
+    # st.write(disease_list)
+
+    # Assigns unique integer indices to diseases
+    disease_index = {disease: i for i, disease in enumerate(disease_list)}
+
+    # creates list of binary tuples for each gene
+    disease_tuples = []
+
+    # generates list of all possible binary tuples of length equal to the number of diseases
+    # all_possible_tuples = list(itertools.product([0,1], repeat = len(disease_list)))
+    # st.write(all_possible_tuples)
+
+    # Iterates over genes and initializes binary tuple for each gene adding to disease_list
+    for gene in set.union(*disease_sets.values()):
+        binary_tuple = [0] * len(disease_list)
+
+        for disease, genes in disease_sets.items():
+            if gene in genes:
+                binary_tuple[disease_index[disease]] = 1
+        disease_tuples.append(tuple(binary_tuple))
+    
+    # Iteratively counts number of each disease tuple occurrence
+    tuple_counts = {}
+    for tup in disease_tuples:
+        if tup in tuple_counts:
+            tuple_counts[tup] += 1
+        else:
+            tuple_counts[tup] = 1
+    
+    # adds binary tuples to tuple_counts with a count of 0 that are not in disease_tuples 
+    # does not work because euler diagrams expect non-empty sets
+    # for tup in all_possible_tuples:
+    #     if tup not in disease_tuples:
+    #         tuple_counts[tup] = 0
+
+    # st.write(tuple_counts)
+    serializable_tuple_counts = {str(key): value for key, value in tuple_counts.items()}
+    # st.write(serializable_tuple_counts)
+    
+    fig1, ax = plt.subplots(figsize=(8, 6))
+    st.write(tuple(tuple_counts.values()))
+    diagram = EulerDiagram(tuple_counts, set_labels = disease_list_labels, ax = ax)
+
+    set_label_artists = diagram.set_label_artists
+    # serializable_set_label_artists = {str(key): value for key, value in set_label_artists.items()}
+    st.write(set_label_artists)
+
+    # need to grab radius of each set circle
+    st.write(diagram.origins)
+    origins = diagram.origins
+    st.write(diagram.radii)
+    radii = diagram.radii
+
+    label_count = 0
+    for label in set_label_artists:
+        label.set_x(origins[label_count][0])
+        label.set_y(origins[label_count][1] + radii[label_count])
+        label_count += 1
+        label.set_fontweight("bold")
+    new_list = 0
+    
+    subset_artists = diagram.subset_artists
+    serializable_subset_artists = {str(key): value for key, value in subset_artists.items()}
+    # st.write(serializable_subset_artists)
+    
+    subset_label_artists = diagram.subset_label_artists
+    serializable_subset_label_artists = {str(key): value for key, value in subset_label_artists.items()}
+    # st.write(serializable_subset_label_artists)
+
+
+    
+    #color the patches and edgecolors
+    polygon_count = 0
+    for polygon in subset_artists:
+        # subset_artists[polygon].set_color(colors[polygon_count])
+        subset_artists[polygon].set_edgecolor("black")
+        polygon_count += 1
+    st.write(polygon_count)
+
+
+
+    plt.title("Disease Associations")
+    plt.tight_layout()
+    plt.draw()
+    
+    st.pyplot(fig1)
+
+    with st.expander("**Click to view your current gene data**"):
+        st.dataframe(st.session_state['merged_df'])
+
 
 #builds a bar chart
 def build_visual_2(llm):
+
     all_columns = list(st.session_state.merged_df.columns)
     prompt = PromptTemplate(
     template = """
@@ -201,8 +315,8 @@ def build_visual_2(llm):
     - The columns hold information relating to gene names, disease associations, biological processes, and much more.
     - Some names contain acronyms. Try to decode these remembering that this is a biological/genetic dataset.
     Instructions:
-                - Using the list of column names, select one column the you think is most relevant to subcellular location.
-                - Return the of the columns you found for subcellular location exactly as they are titled in the dataframe
+                - Using the list of column names, select one column the you think is most relevant to subcellular location. It may be called something similar to subcellular location. 
+                - Return the of the columns you found for subcellular location exactly as they are titled in the dataframe. Do not add any special characters, underscores, parantheses, or quotations. 
                 - E.g. Return: ('colname_1')
                 - Return ONLY the column name with that formatting. Do not add any special characters or quotations
     """
@@ -211,6 +325,10 @@ def build_visual_2(llm):
     parser_output = chain.invoke({"all_cols": all_columns})
     
     parser_output_content = parser_output.content.strip('"')
+    parser_output_content = parser_output_content.strip('(')
+    parser_output_content = parser_output_content.strip(')')
+    
+    # st.write(parser_output_content)
 
     # creates list of subcellular locations and gets counts for each location
     all_locations = st.session_state.merged_df[parser_output_content].dropna().str.split(",")
@@ -367,6 +485,7 @@ def chat_with_data(llm, rag_llm):
     )
     # non_toolcalling_agent.handle_parsing_errors = "Check your output and make sure it answers the user query and is a valid JSON object wrapped in triple backticks, use the Action Input/Final Answer syntax"
 
+    temp_df = st.session_state['user_refined_df'].copy()
     pd_df_agent = create_pandas_dataframe_agent( # 'SIMULATES' the data instead of really using the df unless made very clear it has access to df in the prefix
         llm=llm,
         df=[st.session_state['user_refined_df'],st.session_state['expression_df']],
@@ -471,8 +590,8 @@ def analyze_data(llm):
     if st.session_state.most_recent_chart_selection: 
         st.image(st.session_state.most_recent_chart_selection) # SHOULD MAKE IT SO THAT THIS GETS DELETED IF NEW REFINEMENTS ARE MADE (as it would no longer be accurate)
         
-    with st.expander("**Click to view your current gene data**"):
-        st.dataframe(st.session_state['merged_df'])
+    # with st.expander("**Click to view your current gene data**"):
+    #     st.dataframe(st.session_state['merged_df'])
 
     st.divider()
     
