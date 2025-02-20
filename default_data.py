@@ -14,7 +14,7 @@ def load_default_data():
         st.session_state['expression_df'] = None
 
     try:
-        default_allgenes_filename = "data/250129_GeneAnnotation_Data.csv"
+        default_allgenes_filename = "data/250219_GeneAnnotation_Data.csv"
         with open(default_allgenes_filename, 'r') as file:
             default_allgenes_content = file.read()
         file_name = default_allgenes_filename
@@ -42,7 +42,7 @@ def load_default_data():
         colmeta_df['Description'] = colmeta_df['Description'].fillna(colmeta_df['Colname']) # if blank, just use the colname as the description, NOTE MIGHT BREAK IN PANDAS 3
         colmeta_dict = pd.Series(colmeta_df['Description'].values, index=colmeta_df['Colname']).to_dict()
         
-        genes_df = pd.read_csv(file_name,low_memory=False)
+        genes_df = pd.read_csv(file_name,low_memory=False,na_values=['NA', '', 'null'])
         genes_df = genes_df[list(colmeta_dict.keys())] # Keep only the relevant columns, as determined by the colmeta file
         genes_df.columns = genes_df.columns.str.replace('.', '_')
         colmeta_df['Colname'] = colmeta_df['Colname'].str.replace('.', '_', regex=False)

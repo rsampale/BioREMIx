@@ -143,7 +143,7 @@ if st.session_state['authenticated']:
             with refine_box:
                 if 'init_refinement_q_widget' not in st.session_state:
                     st.session_state.init_refinement_q_widget = None
-                st.text_input("E.g. 'Only keep genes with low tissue specificity'",max_chars=500,key='init_refinement_q_widget',on_change=submit_text(location='initial_refinement'))
+                st.text_input("E.g. 'Only keep genes involved in ALS'",max_chars=500,key='init_refinement_q_widget',on_change=submit_text(location='initial_refinement'))
                 st.write("**Your Data Refinement Query:** ",st.session_state['user_refinement_q'])
 
             # Show option to skip if user has not yet entered anything

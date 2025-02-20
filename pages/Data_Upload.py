@@ -27,7 +27,7 @@ if st.session_state['authenticated']:
 
         with st.expander("**Upload gene information data**",expanded=True):
             ## MAIN DATAFRAME UPLOAD:
-            default_allgenes_filename = "data/250129_GeneAnnotation_Data.csv"
+            default_allgenes_filename = "data/250219_GeneAnnotation_Data.csv"
             with open(default_allgenes_filename, 'r') as file:
                 default_allgenes_content = file.read()
 
@@ -83,7 +83,7 @@ if st.session_state['authenticated']:
             if 'colmeta_dict' not in st.session_state:
                 st.session_state['colmeta_dict'] = colmeta_dict
             
-            genes_df = pd.read_csv(file_name,low_memory=False)
+            genes_df = pd.read_csv(file_name,low_memory=False,na_values=['NA', '', 'null'])
             genes_df = genes_df[list(colmeta_dict.keys())] # Keep only the relevant columns, as determined by the colmeta file
             genes_df.columns = genes_df.columns.str.replace('.', '_')
 

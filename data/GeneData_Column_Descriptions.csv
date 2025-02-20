@@ -1,6 +1,7 @@
 ﻿Colname,Description
 Uniprot.ID,Unique identifier assigned to the protein by UniProt. E.g. A0A024R1R8
 Gene.Name,Official gene symbol associated with the protein. E.g. TMA7B
+Gene.Name.Synonyms,Gene names and synonyms for genes/protein in the OMIM database
 Full.protein.name,Full name of the protein as listed in UniProt. E.g. Translation machinery-associated protein 7B
 Protein.length,Total number of amino acids in the protein sequence. e.g. '117'
 Active.site.residues,Residues that form the active site of the protein and any associated notes about the site. E.g. ACT_SITE 69; /note=Proton acceptor; /evidence=ECO:0000250
@@ -33,7 +34,6 @@ Protein.pathways,The protein pathways that the gene product is involved in. Begi
 Activity.regulation,"How the protein is regulated by other proteins/molecules. Begins with 'ACTIVITY REGULATION: '. E.g. ACTIVITY REGULATION: Activated upon interaction by mucunain, a cowhage (Mucuna pruriens) plant cysteine proteinase. {ECO:0000269|PubMed:18434511}."
 Catalytic.activity,"Description of the gene product's catalytic activity, if any. Begins with 'CATALYTIC ACTIVITY: ' E.g. CATALYTIC ACTIVITY: Reaction=H2O(in) = H2O(out); Xref=Rhea:RHEA:29667, ChEBI:CHEBI:15377; Evidence={ECO:0000269|PubMed:18768791, ECO:0000269|PubMed:23867895, ECO:0000269|PubMed:8621489};"
 DNA.binding,Residues/region involved in binding DNA. Begins with 'DNA_BIND '. E.g. DNA_BIND 259..321; /note=Homeobox; TALE-type; /evidence=ECO:0000255|PROSITE-ProRule:PRU00108
-EC.number,Enzyme commission number (if any). E.g. '2.7.11.13'
 Cofactors,Cofactors or essential molecules required for protein activity. E.g. COFACTOR: Name=Zn(2+); Xref=ChEBI:CHEBI:29105; Evidence={ECO:0000305}; Note=Binds 1 zinc ion per subunit. {ECO:0000305};
 MIM.Number,Unique identifier for a genetic condition or gene in the Online Mendelian Inheritance in Man (OMIM) database. E.g. '600639'
 Chromosome,Chromosome that the gene is found on. E.g. 'chr2'
@@ -45,10 +45,9 @@ Subcellular.location,"Organelle or cellular compartment(s) that the gene product
 Sub.mitochondria.localization,"For mitochondria localizing genes, the sub mitochondrial compartment where the gene is found. E.g. Matrix"
 Mitochondria.pathways,"For mitochondria localizing genes, the mitochondrial pathways the gene/gene product is involved in. E.g. Metabolism > Lipid metabolism > Fatty acid oxidation"
 Protein.class,"The protein class of the disease product. E.g. Enzymes, disease related genes, predicted membrane proteins, transporters, etc. E.g. 'Enzymes, Metabolic proteins, Plasma proteins, Predicted intracellular proteins'"
-RNA.tissue.specificity,Whether the gene has high or low tissue specificity. E.g. 'Low tissue specificity' or 'Tissue enhanced' or 'Group enhanced'
 Cell.type.specificity,The cell type(s) that a gene is specific to (if any). E.g. Cardiomyocytes: 26.2;dendritic cells: 81.0;Ovarian stromal cells: 103.4
-Antibody,Antibody identifier(s). E.g. HPA048636
-CMT,The gene is associated with Charcot-Marie-Tooth (CMT) disease. 1 if associated.
+Axonal.CMT,The gene is associated with Axonal Charcot-Marie-Tooth (CMT) disease. 1 if associated.
+Demyelinating.CMT,The gene is associated with Demyelinating Charcot-Marie-Tooth (CMT) disease. 1 if associated.
 Giwon.list,Gene is a part of Giwon's list. 1 if true
 Robi.list,Gene is a part of Rob's list. 1 if true
 Jeff.list,Gene is a part of Jeff's list. 1 if true
@@ -60,6 +59,6 @@ SMA,The gene is associated with Spinal Muscular Atrophy (SMA) disease. 1 if asso
 SCA,The gene is associated with Spinocerebellar Ataxia (SCA) disease. 1 if associated.
 Diabetes,The gene is associated with Diabetes disease. 1 if associated.
 Cancer.related,The gene is associated with Cancer. 1 if associated.
-Other.disease,The gene is associated with some other disease. 1 if associated.
-NDD.count,Number of neurodegenerative diseases (NDDs) the gene is associated with.
+Associated.With.Any.Disease,The gene is associated with some disease. 1 if associated.
+Neurodegenerative.disease.count,Number of neurodegenerative diseases (NDDs) the gene is associated with.
 Gene.of.interest,Whether the gene is one of the MGI's genes of interest. 1 if true

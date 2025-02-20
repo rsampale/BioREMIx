@@ -250,7 +250,7 @@ def repeat_refinement(llm):
     st.subheader("Enter your refining statement:")
     repeat_refine_box = st.container(height=150)
     with repeat_refine_box:
-        st.text_input("E.g. 'Only keep genes with low tissue specificity'",max_chars=501,key='repeat_refinement_q_widget',on_change=submit_text(location="repeat_refinement")) # if maxchars = 500 it thinks its the same text_input as before
+        st.text_input("E.g. 'Only keep genes involved in ALS'",max_chars=501,key='repeat_refinement_q_widget',on_change=submit_text(location="repeat_refinement")) # if maxchars = 500 it thinks its the same text_input as before
         st.write("**Your Most Recent Data Refinement Query:** ",st.session_state.last_refinement_q)
     
     ## repeat-refining agent:
