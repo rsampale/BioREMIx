@@ -256,9 +256,6 @@ def build_visual_1(llm):
     # Store in session state
     st.session_state["most_recent_chart_selection"] = img_bytes
 
-    with st.expander("**Click to view your current gene data**"):
-        st.dataframe(st.session_state['merged_df'])
-
 
 #builds a bar chart
 def build_visual_2(llm):
