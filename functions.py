@@ -1,21 +1,19 @@
 import streamlit as st
 import time
 import ast
-import itertools
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-import matplotlib.colors as mcolors
 import numpy as np
+import plotly.graph_objects as go
 import pandas as pd
 import requests
 import io
 from openai import OpenAI
-from matplotlib_set_diagrams import EulerDiagram, VennDiagram
+from matplotlib_set_diagrams import EulerDiagram
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_core.prompts import PromptTemplate
 from langchain.callbacks.streamlit import StreamlitCallbackHandler # deprecated
 from rag import col_retrieval_rag
-from venn import venn
+
 def authenticate():
     # placeholders variables for UI 
     title_placeholder = st.empty()
@@ -161,17 +159,14 @@ def build_visual_1(llm):
     # creates new df with only disease columns and adds to session state
     relevant_cols_only_df = st.session_state.merged_df[colnames_list]
     st.session_state['relevant_cols_only_df'] = relevant_cols_only_df
-    
-    # st.dataframe(st.session_state['relevant_cols_only_df'])
 
     # counts disease associations
     string_counts = relevant_cols_only_df.apply(lambda col: (col == 1).sum())
 
     # remove diseases that have 0 count
     string_counts = string_counts[string_counts > 0]
-    # st.write(string_counts)
     
-    # makes sure there is data to display (prevents displaying labels for 0 slices)
+    # makes sure there is data to display
     nonzero_indices = string_counts > 0
     filtered_counts = string_counts[nonzero_indices]
     filtered_labels = [label for label, keep in zip(colnames_labels, nonzero_indices) if keep]
@@ -179,33 +174,7 @@ def build_visual_1(llm):
         st.write("You do not have any data to plot. Try to redo your refinement.")
         return
 
-    # configures pie chart
-    colormap=cm.get_cmap("Greens",len(colnames_list))
-    colors=[colormap(i / len(colnames_list)) for i in range(len(colnames_list))]
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.pie(
-        filtered_counts,
-        labels=filtered_labels,
-        autopct='%1.1f%%',
-        startangle=90,
-        textprops={'fontsize': 5},
-        labeldistance=1.05,
-        colors=colors,
-        wedgeprops={"edgecolor": "black", "linewidth": 1},
-    )
-    ax.set_title("Disease Associations")
-    ax.axis('equal') 
-
-    
-    # Save figure to BytesIO
-    img_bytes = io.BytesIO()
-    fig.savefig(img_bytes, format="png", bbox_inches="tight")
-    img_bytes.seek(0)  # Move to the beginning
-    # Store in session state
-    st.session_state["most_recent_chart_selection"] = img_bytes
-    
-    st.pyplot(plt)
-
+    # builds disease sets 
     disease_sets = {
         disease: set(st.session_state['relevant_cols_only_df'].index[st.session_state['relevant_cols_only_df'][disease] == 1]) for disease in st.session_state['relevant_cols_only_df'].columns
     }
@@ -214,17 +183,12 @@ def build_visual_1(llm):
     # create labels for euler diagram
     disease_list = list(disease_sets.keys())
     disease_list_labels = [disease.replace("_", " ") for disease in disease_list]
-    # st.write(disease_list)
 
     # Assigns unique integer indices to diseases
     disease_index = {disease: i for i, disease in enumerate(disease_list)}
 
     # creates list of binary tuples for each gene
     disease_tuples = []
-
-    # generates list of all possible binary tuples of length equal to the number of diseases
-    # all_possible_tuples = list(itertools.product([0,1], repeat = len(disease_list)))
-    # st.write(all_possible_tuples)
 
     # Iterates over genes and initializes binary tuple for each gene adding to disease_list
     for gene in set.union(*disease_sets.values()):
@@ -243,63 +207,54 @@ def build_visual_1(llm):
         else:
             tuple_counts[tup] = 1
     
-    # adds binary tuples to tuple_counts with a count of 0 that are not in disease_tuples 
-    # does not work because euler diagrams expect non-empty sets
-    # for tup in all_possible_tuples:
-    #     if tup not in disease_tuples:
-    #         tuple_counts[tup] = 0
-
-    # st.write(tuple_counts)
-    serializable_tuple_counts = {str(key): value for key, value in tuple_counts.items()}
-    # st.write(serializable_tuple_counts)
-    
     fig1, ax = plt.subplots(figsize=(8, 6))
-    st.write(tuple(tuple_counts.values()))
     diagram = EulerDiagram(tuple_counts, set_labels = disease_list_labels, ax = ax)
 
-    set_label_artists = diagram.set_label_artists
-    # serializable_set_label_artists = {str(key): value for key, value in set_label_artists.items()}
-    st.write(set_label_artists)
-
-    # need to grab radius of each set circle
-    st.write(diagram.origins)
+    # get orgins, radii, width, height to help place labels
     origins = diagram.origins
-    st.write(diagram.radii)
     radii = diagram.radii
+    highest_set = np.max(origins[1])
+    lowest_set = np.min(origins[1])
+    height_middle = (highest_set + lowest_set)/2
+    rightmost_set = np.max(origins[0])
+    leftmost_set = np.min(origins[0])
 
+    # places set labels
     label_count = 0
+    set_label_artists = diagram.set_label_artists
     for label in set_label_artists:
-        label.set_x(origins[label_count][0])
-        label.set_y(origins[label_count][1] + radii[label_count])
+        setx = origins[label_count][0]
+        sety = origins[label_count][1]
+        if sety >= height_middle:
+            label.set_x(setx)
+            label.set_y(sety + radii[label_count])
+        else:
+            label.set_x(setx)
+            label.set_y(sety - radii[label_count])
+
         label_count += 1
         label.set_fontweight("bold")
-    new_list = 0
-    
-    subset_artists = diagram.subset_artists
-    serializable_subset_artists = {str(key): value for key, value in subset_artists.items()}
-    # st.write(serializable_subset_artists)
-    
-    subset_label_artists = diagram.subset_label_artists
-    serializable_subset_label_artists = {str(key): value for key, value in subset_label_artists.items()}
-    # st.write(serializable_subset_label_artists)
+        label.set_horizontalalignment("center")
 
-
-    
     #color the patches and edgecolors
+    subset_artists = diagram.subset_artists
     polygon_count = 0
     for polygon in subset_artists:
         # subset_artists[polygon].set_color(colors[polygon_count])
         subset_artists[polygon].set_edgecolor("black")
         polygon_count += 1
-    st.write(polygon_count)
-
-
 
     plt.title("Disease Associations")
     plt.tight_layout()
-    plt.draw()
     
-    st.pyplot(fig1)
+    # st.pyplot(fig1)
+
+    # Save figure to BytesIO
+    img_bytes = io.BytesIO()
+    fig1.savefig(img_bytes, format="png", bbox_inches="tight")
+    img_bytes.seek(0)  # Move to the beginning
+    # Store in session state
+    st.session_state["most_recent_chart_selection"] = img_bytes
 
     with st.expander("**Click to view your current gene data**"):
         st.dataframe(st.session_state['merged_df'])
@@ -327,38 +282,64 @@ def build_visual_2(llm):
     parser_output_content = parser_output.content.strip('"')
     parser_output_content = parser_output_content.strip('(')
     parser_output_content = parser_output_content.strip(')')
-    
-    # st.write(parser_output_content)
 
     # creates list of subcellular locations and gets counts for each location
-    all_locations = st.session_state.merged_df[parser_output_content].dropna().str.split(",")
+    all_locations = st.session_state.merged_df[parser_output_content].dropna().str.split(";")
     flat_locations = [loc.strip() for sublist in all_locations for loc in sublist]
     location_counts = pd.Series(flat_locations).value_counts()
 
+    # places location counts in ascending order
+    ordered_location_counts = location_counts.sort_values(ascending = False)
+
     # makes sure there is actually data to plot
-    nonzero_indices = location_counts > 0
-    filtered_counts = location_counts[nonzero_indices]
+    nonzero_indices = ordered_location_counts > 0
+    filtered_counts = ordered_location_counts[nonzero_indices]
     if len(filtered_counts) == 0:
         st.write("You do not have any data to plot. Try to redo your refinement.")
         return
     
-    #configure bar chart
-    fig, ax = plt.subplots(figsize=(10, 6))
-    location_counts.plot(kind="bar", color="palegreen", edgecolor="black", ax=ax)
-    plt.xlabel("Subcellular Location", fontsize=12)
-    plt.ylabel("Number of Genes", fontsize=12)
-    plt.title("Distribution of Genes Across Subcellular Locations", fontsize=14)
-    plt.xticks(rotation=45, ha="right")  # Rotate labels for better readability
-    plt.grid(axis="y", linestyle="--", alpha=0.7)
+    # grabs top 20 subcellular locations
+    top20_counts = filtered_counts.head(20).copy()
     
+    # confiures bar chart
+    fig1 = go.Figure(
+        data=[go.Bar(x=top20_counts.index, y=top20_counts.values, marker_color="palegreen")]
+    )
+    fig1.update_layout(
+        title = dict(
+            text = "Distribution of Genes Across Top 20 Subcellular Locations", 
+            font = dict(family = "Arial", size = 18, weight = "bold"),
+        ),
+        xaxis = dict(
+            title = dict(
+                text = "Subcellular Location",
+                font = dict(family = "Arial", size = 16, color = "black", weight = "bold")
+            ),
+            tickfont=dict(family = "Arial", size = 14, color = "black", weight = "bold"),
+            tickangle = 45
+        ),
+        yaxis = dict(
+            title = dict(
+                text = "Number of Genes",
+                font = dict(family = "Arial", size = 16, color = "black", weight = "bold")
+            ),
+            tickfont=dict(family = "Arial", size=14, color="black", weight = "bold")
+        ),
+        template="plotly_white",
+        autosize = False,
+        height = 600
+    )
+
+    # displays chart
+    # st.plotly_chart(fig1, use_container_width=False)
+
     # Save the figure to a BytesIO object
     img_bytes = io.BytesIO()
-    fig.savefig(img_bytes, format="png", bbox_inches="tight")
+    fig1.write_image(img_bytes, format = "png", scale=2)
     img_bytes.seek(0)  # Move to start
+
     # Store in session state
     st.session_state["most_recent_chart_selection"] = img_bytes
-    
-    # st.pyplot(fig)
 
 
 def repeat_refinement(llm):
@@ -579,7 +560,7 @@ def analyze_data(llm):
         st.session_state.most_recent_chart_selection = None
 
     with col1:
-        if st.button("Pie Chart: Disease Associations",use_container_width=True):
+        if st.button("Euler Diagram: Disease Associations",use_container_width=True):
             build_visual_1(llm=llm)
 
     with col2:
@@ -588,10 +569,10 @@ def analyze_data(llm):
             
     # Print most recent saved chart to the screen:
     if st.session_state.most_recent_chart_selection: 
-        st.image(st.session_state.most_recent_chart_selection) # SHOULD MAKE IT SO THAT THIS GETS DELETED IF NEW REFINEMENTS ARE MADE (as it would no longer be accurate)
+         st.image(st.session_state.most_recent_chart_selection) # SHOULD MAKE IT SO THAT THIS GETS DELETED IF NEW REFINEMENTS ARE MADE (as it would no longer be accurate)
         
-    # with st.expander("**Click to view your current gene data**"):
-    #     st.dataframe(st.session_state['merged_df'])
+    with st.expander("**Click to view your current gene data**"):
+         st.dataframe(st.session_state['merged_df'])
 
     st.divider()
     
