@@ -305,14 +305,14 @@ def build_visual_2(llm):
     fig1.update_layout(
         title = dict(
             text = "Distribution of Genes Across Top 20 Subcellular Locations", 
-            font = dict(family = "Arial", size = 18, weight = "bold"),
+            # font = dict(family = "Arial", size = 18, weight = "bold"),
         ),
         xaxis = dict(
             title = dict(
                 text = "Subcellular Location",
-                font = dict(family = "Arial", size = 16, color = "black", weight = "bold")
+                # font = dict(family = "Arial", size = 16, color = "black", weight = "bold")
             ),
-            tickfont=dict(family = "Arial", size = 14, color = "black", weight = "bold"),
+            # tickfont=dict(family = "Arial", size = 14, color = "black", weight = "bold"),
             tickangle = 45
         ),
         yaxis = dict(
@@ -320,7 +320,7 @@ def build_visual_2(llm):
                 text = "Number of Genes",
                 font = dict(family = "Arial", size = 16, color = "black", weight = "bold")
             ),
-            tickfont=dict(family = "Arial", size=14, color="black", weight = "bold")
+            # tickfont=dict(family = "Arial", size=14, color="black", weight = "bold")
         ),
         template="plotly_white",
         autosize = False,
