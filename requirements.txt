@@ -30,6 +30,7 @@ jsonpatch==1.33
 jsonpointer==3.0.0
 jsonschema==4.23.0
 jsonschema-specifications==2024.10.1
+kaleido==0.2.1
 kiwisolver==1.4.7
 langchain==0.3.15
 langchain-community==0.3.15
@@ -42,6 +43,7 @@ markdown-it-py==3.0.0
 MarkupSafe==3.0.1
 marshmallow==3.22.0
 matplotlib==3.9.2
+matplotlib-set-diagrams==1.0.0
 mdurl==0.1.2
 multidict==6.1.0
 mypy-extensions==1.0.0
@@ -52,6 +54,7 @@ orjson==3.10.7
 packaging==24.1
 pandas==2.2.3
 pillow==10.4.0
+plotly==5.17.0
 propcache==0.2.0
 protobuf==5.28.2
 pyarrow==17.0.0
