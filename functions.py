@@ -233,38 +233,6 @@ def build_visual_2(llm):
     plt.xticks(rotation=45, ha="right")  # Rotate labels for better readability
     plt.grid(axis="y", linestyle="--", alpha=0.7)
     
-    # confiures bar chart
-    fig1 = go.Figure(
-        data=[go.Bar(x=top20_counts.index, y=top20_counts.values, marker_color="palegreen")]
-    )
-    fig1.update_layout(
-        title = dict(
-            text = "Distribution of Genes Across Top 20 Subcellular Locations", 
-            # font = dict(family = "Arial", size = 18, weight = "bold"),
-        ),
-        xaxis = dict(
-            title = dict(
-                text = "Subcellular Location",
-                # font = dict(family = "Arial", size = 16, color = "black", weight = "bold")
-            ),
-            # tickfont=dict(family = "Arial", size = 14, color = "black", weight = "bold"),
-            tickangle = 45
-        ),
-        yaxis = dict(
-            title = dict(
-                text = "Number of Genes",
-                # font = dict(family = "Arial", size = 16, color = "black", weight = "bold")
-            ),
-            # tickfont=dict(family = "Arial", size=14, color="black", weight = "bold")
-        ),
-        template="plotly_white",
-        autosize = False,
-        height = 600
-    )
-
-    # displays chart
-    # st.plotly_chart(fig1, use_container_width=False)
-    
     # Save the figure to a BytesIO object
     img_bytes = io.BytesIO()
     fig.savefig(img_bytes, format="png", bbox_inches="tight")
