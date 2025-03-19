@@ -246,8 +246,7 @@ def build_visual_1(llm):
 
     plt.title("Disease Associations")
     plt.tight_layout()
-    
-    # st.pyplot(fig1)
+
 
     # Save figure to BytesIO
     img_bytes = io.BytesIO()
