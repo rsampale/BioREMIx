@@ -317,7 +317,7 @@ def build_visual_2(llm):
         yaxis = dict(
             title = dict(
                 text = "Number of Genes",
-                font = dict(family = "Arial", size = 16, color = "black", weight = "bold")
+                # font = dict(family = "Arial", size = 16, color = "black", weight = "bold")
             ),
             # tickfont=dict(family = "Arial", size=14, color="black", weight = "bold")
         ),
