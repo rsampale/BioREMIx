@@ -2,13 +2,11 @@ import streamlit as st
 import time
 import ast
 import matplotlib.pyplot as plt
-import numpy as np
-import plotly.graph_objects as go
+import matplotlib.cm as cm
 import pandas as pd
 import requests
 import io
 from openai import OpenAI
-from matplotlib_set_diagrams import EulerDiagram
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_core.prompts import PromptTemplate
 from langchain.callbacks.streamlit import StreamlitCallbackHandler # deprecated
@@ -326,8 +324,6 @@ def build_visual_2(llm):
         height = 600
     )
 
-    # displays chart
-    # st.plotly_chart(fig1, use_container_width=False)
 
     # Save the figure to a BytesIO object
     img_bytes = io.BytesIO()
