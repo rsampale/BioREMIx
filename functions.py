@@ -3,6 +3,7 @@ import time
 import ast
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import plotly.graph_objects as go
 import pandas as pd
 import requests
 import io
@@ -10,6 +11,7 @@ from openai import OpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_core.prompts import PromptTemplate
 from langchain.callbacks.streamlit import StreamlitCallbackHandler # deprecated
+from matplotlib_set_diagrams import EulerDiagram
 from rag import col_retrieval_rag
 
 def authenticate():
