@@ -3,6 +3,7 @@ import time
 import ast
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import numpy as np
 import plotly.graph_objects as go
 import pandas as pd
 import requests
