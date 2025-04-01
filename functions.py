@@ -579,6 +579,6 @@ def analyze_data(llm):
     with send_genes_placeholder:
         if st.button("Send your genes to the BioMiners Tool Suite",use_container_width=True):
             send_genesdata()
-            st.link_button(label="View Genes in NeuroKinex",url=st.session_state["neurokinex_url"],type="primary",use_container_width=True)
+            st.link_button(label="View Genes in the Biominers Tool Suite",url=st.session_state["neurokinex_url"],type="primary",use_container_width=True)
 
     st.divider()
