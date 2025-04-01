@@ -7,6 +7,9 @@ from langchain_openai import ChatOpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from collections import deque 
 
+# PAGE CONFIG
+st.set_page_config(page_title="Gene Exploration Tool")
+
 mgi_icon = "images/the_elizabeth_h_and_james_s_mcdonnell_genome_institute_logo.jpg"
 st.logo(mgi_icon, size='large')
 
@@ -31,7 +34,7 @@ if st.session_state['authenticated']:
     if not PERPLEXITY_API_KEY:
         raise ValueError("Perplexity API key is not set. Please set the PERPLEXITY_API_KEY environment variable.")
  
-    st.sidebar.button("Reboot Session", on_click=reboot_hypothesizer,use_container_width=True)
+    st.sidebar.button("Reboot Session", on_click=reboot_hypothesizer,use_container_width=True,help="Completely reset the application and any refinements made.")
 
 
     if 'refine_section_visible' not in st.session_state:
@@ -104,7 +107,8 @@ if st.session_state['authenticated']:
         with refine_box:
             if 'init_refinement_q_widget' not in st.session_state:
                 st.session_state.init_refinement_q_widget = None
-            st.text_input("E.g. 'Only keep genes involved in ALS'",max_chars=500,key='init_refinement_q_widget',on_change=submit_text(location='initial_refinement'))
+            st.text_input("E.g. 'Only keep genes involved in ALS'",max_chars=500,key='init_refinement_q_widget',on_change=submit_text(location='initial_refinement'),
+                          help="Submit your first data refinement. Note that you may only submit one in this stage (see 'Keep Refining' to add more). It is generally recommended to submit refinements/filters one at a time. Complex refinements may occasionally fail.")
             st.write("**Your Data Refinement Query:** ",st.session_state['user_refinement_q'])
 
         # Show option to skip if user has not yet entered anything

@@ -3,6 +3,9 @@ from functions import authenticate
 from default_data import load_default_data
 import pandas as pd
 
+# PAGE CONFIG
+st.set_page_config(page_title="Data Upload")
+
 if 'authenticated' not in st.session_state:
     st.session_state['authenticated'] = False
 if 'genes_info_df' not in st.session_state:

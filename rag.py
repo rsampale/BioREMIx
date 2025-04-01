@@ -38,8 +38,8 @@ def col_retrieval_rag(query, rag_llm):
     rag_chain = create_retrieval_chain(retriever, combine_docs_chain)
 
 
-    full_query = f"Briefly answer the following: What is the best column(s) (and any data format considerations for extracting data from those columns) to answer the following user query: '{query}'? Note that the user query is referencing a dataframe of genes and associated metadata about those genes"
+    full_query = f"Briefly answer the following: What columns might be used to answer the following user query: '{query}'? Note that the user query is likely trying to perform a pandas expression / filtering step on a dataframe with rows as genes and these columns. Also mention any format info you have about those columns."
     response = rag_chain.invoke({"input": full_query})
     answer = response['answer']
 
-    return answer
+    return response

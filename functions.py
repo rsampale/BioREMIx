@@ -427,12 +427,16 @@ def chat_with_data(llm, rag_llm):
     # table with genes, logFC, padj, disease, and cell_type. Only use this expression dataframe if the user asks a question that requires it for an answer. When using it, consider only the genes
     # also present in the first dataframe.
 
-    online_search = st.sidebar.toggle("Toggle Perplexity Online Search")
+    st.header("Chat with your data")
+    st.markdown("""Ask questions about the genes/proteins you have narrowed down, general questions about biology, and more. If you have uploaded expression data, you may also use that as part of your queries.\n
+**For more complex questions where sources or internet search are desired**, try using Perplexity mode (**Note** that in this mode the agent does not have direct access to your data table).""")
 
-    # if "messages" not in st.session_state or st.sidebar.button("Clear chat history",use_container_width=True):
-    #     st.session_state["messages"] = [{"role": "system", "content": "Run code or pandas expressions on the dataframe ('df') given to you to answer the user queries."}]
     if "messages" not in st.session_state or st.sidebar.button("Clear chat history",use_container_width=True):
-        st.session_state["messages"] = [{"role": "system", "content": "Run code or pandas expressions on the dataframes ('df1' and 'df2') given to you to answer the user queries. Assume the user is talking about 'their' genes in df1 unless they are referencing expression."}]
+        st.session_state["messages"] = [{"role": "system", "content": "Run code or pandas expressions on the dataframes ('df1' and 'df2') given to you to answer the user queries. Assume the user is talking about 'their' genes in df1 unless they are referencing expression."},
+                                        {"role": "assistant", "content": "Hi! What do you want to know about your genes/proteins?"}]
+
+    online_search = st.sidebar.toggle("Toggle Perplexity Online Search",help="When ON, uses Perplexity instead of ChatGPT as the base model LLM. Perplexity has realtime access to the internet and can provide real links and sources.")
+
     
     for msg in st.session_state.messages:
         if msg["role"] != "system":
@@ -527,7 +531,7 @@ def send_genesdata():
     # st.write(response)
     if response.status_code == 200:
         session_id = response_json["session_id"]
-        shiny_url = f"http://98.84.134.224/NeuroKinex/?session_id={session_id}"
+        shiny_url = f"https://biominers.net/NeuroKinex/?session_id={session_id}"
         st.session_state["neurokinex_url"] = shiny_url
         # st.markdown(f"[Go to Shiny App]({shiny_url})")
         st.markdown(f"WORKED: {session_id}")

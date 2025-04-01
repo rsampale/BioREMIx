@@ -12,23 +12,24 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import retrieval_qa
 from langchain import hub
 from default_data import create_colname_vectorstore, load_default_data
+from rag import col_retrieval_rag
 
 load_default_data()
 
 
-llm = ChatOpenAI(openai_api_key = st.secrets.OPENAI_API_KEY, model = "gpt-4o-mini")
-retrieval_qa_chat_prompt = hub.pull("langchain-ai/retrieval-qa-chat")
-retriever = st.session_state.colname_vectorstore.as_retriever(search_kwargs={"k": 10})
+llm = ChatOpenAI(openai_api_key = st.secrets.OPENAI_API_KEY, model = "gpt-4o-2024-11-20")
+# retrieval_qa_chat_prompt = hub.pull("langchain-ai/retrieval-qa-chat")
+# retriever = st.session_state.colname_vectorstore.as_retriever(search_kwargs={"k": 10})
 
-# See https://python.langchain.com/docs/versions/migrating_chains/retrieval_qa/ for implementation of the new LCEL approach
-combine_docs_chain = create_stuff_documents_chain(llm, retrieval_qa_chat_prompt)
-rag_chain = create_retrieval_chain(retriever, combine_docs_chain)
+# # See https://python.langchain.com/docs/versions/migrating_chains/retrieval_qa/ for implementation of the new LCEL approach
+# combine_docs_chain = create_stuff_documents_chain(llm, retrieval_qa_chat_prompt)
+# rag_chain = create_retrieval_chain(retriever, combine_docs_chain)
 
 # st.write(st.session_state['docs'])
 
 query = st.text_input("Enter your question:")
 if query:
-    response = rag_chain.invoke({"input": query})
+    response = col_retrieval_rag(query, llm)
 
     # Display the final answer
     st.subheader("LLM Answer:")

@@ -2,6 +2,10 @@ import streamlit as st
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from datetime import datetime
+
+# PAGE CONFIG
+st.set_page_config(page_title="Submit Feedback")
+
 # ✅ Load credentials from Streamlit secrets
 credentials_info = st.secrets["google"]
 credentials = service_account.Credentials.from_service_account_info(
