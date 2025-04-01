@@ -577,7 +577,7 @@ def analyze_data(llm):
     
     send_genes_placeholder = st.empty()
     with send_genes_placeholder:
-        if st.button("Send your genes to NeuroKinex",use_container_width=True):
+        if st.button("Send your genes to the BioMiners Tool Suite",use_container_width=True):
             send_genesdata()
             st.link_button(label="View Genes in NeuroKinex",url=st.session_state["neurokinex_url"],type="primary",use_container_width=True)
 
