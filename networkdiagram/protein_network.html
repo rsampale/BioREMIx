@@ -1,0 +1,2134 @@
+<html>
+
+<head>
+  <meta charset="utf-8">
+    <script src="lib/bindings/utils.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <script>function neighbourhoodHighlight(params) {
+      // console.log("in nieghbourhoodhighlight");
+      allNodes = nodes.get({ returnType: "Object" });
+      // originalNodes = JSON.parse(JSON.stringify(allNodes));
+      // if something is selected:
+      if (params.nodes.length > 0) {
+        highlightActive = true;
+        var i, j;
+        var selectedNode = params.nodes[0];
+        var degrees = 2;
+
+        // mark all nodes as hard to read.
+        for (let nodeId in allNodes) {
+          // nodeColors[nodeId] = allNodes[nodeId].color;
+          allNodes[nodeId].color = "rgba(200,200,200,0.3)";
+          if (allNodes[nodeId].hiddenLabel === undefined) {
+            allNodes[nodeId].hiddenLabel = allNodes[nodeId].label;
+            allNodes[nodeId].label = undefined;
+          }
+        }
+        var connectedNodes = network.getConnectedNodes(selectedNode);
+        var allConnectedNodes = [];
+
+        // get the second degree nodes
+        for (i = 1; i < degrees; i++) {
+          for (j = 0; j < connectedNodes.length; j++) {
+            allConnectedNodes = allConnectedNodes.concat(
+              network.getConnectedNodes(connectedNodes[j])
+            );
+          }
+        }
+
+        // all second degree nodes get a different color and their label back
+        for (i = 0; i < allConnectedNodes.length; i++) {
+          // allNodes[allConnectedNodes[i]].color = "pink";
+          allNodes[allConnectedNodes[i]].color = "rgba(150,150,150,0.3)";
+          if (allNodes[allConnectedNodes[i]].hiddenLabel !== undefined) {
+            allNodes[allConnectedNodes[i]].label =
+              allNodes[allConnectedNodes[i]].hiddenLabel;
+            allNodes[allConnectedNodes[i]].hiddenLabel = undefined;
+          }
+        }
+
+        // all first degree nodes get their own color and their label back
+        for (i = 0; i < connectedNodes.length; i++) {
+          allNodes[connectedNodes[i]].color = undefined;
+          allNodes[connectedNodes[i]].color = nodeColors[connectedNodes[i]];
+          if (allNodes[connectedNodes[i]].hiddenLabel !== undefined) {
+            allNodes[connectedNodes[i]].label =
+              allNodes[connectedNodes[i]].hiddenLabel;
+            allNodes[connectedNodes[i]].hiddenLabel = undefined;
+          }
+        }
+
+        // the main node gets its own color and its label back.
+        // allNodes[selectedNode].color = undefined;
+        allNodes[selectedNode].color = nodeColors[selectedNode];
+        if (allNodes[selectedNode].hiddenLabel !== undefined) {
+          allNodes[selectedNode].label = allNodes[selectedNode].hiddenLabel;
+          allNodes[selectedNode].hiddenLabel = undefined;
+        }
+      } else if (highlightActive === true) {
+        // console.log("highlightActive was true");
+        // reset all nodes
+        for (let nodeId in allNodes) {
+          // allNodes[nodeId].color = "purple";
+          allNodes[nodeId].color = nodeColors[nodeId];
+          // delete allNodes[nodeId].color;
+          if (allNodes[nodeId].hiddenLabel !== undefined) {
+            allNodes[nodeId].label = allNodes[nodeId].hiddenLabel;
+            allNodes[nodeId].hiddenLabel = undefined;
+          }
+        }
+        highlightActive = false;
+        jumpto
+      }
+
+      // transform the object into an array
+      var updateArray = [];
+      if (params.nodes.length > 0) {
+        for (let nodeId in allNodes) {
+          if (allNodes.hasOwnProperty(nodeId)) {
+            // console.log(allNodes[nodeId]);
+            updateArray.push(allNodes[nodeId]);
+          }
+        }
+        nodes.update(updateArray);
+      } else {
+        // console.log("Nothing was selected");
+        for (let nodeId in allNodes) {
+          if (allNodes.hasOwnProperty(nodeId)) {
+            // console.log(allNodes[nodeId]);
+            // allNodes[nodeId].color = {};
+            updateArray.push(allNodes[nodeId]);
+          }
+        }
+        nodes.update(updateArray);
+      }
+    }
+
+    function filterHighlight(params) {
+      allNodes = nodes.get({ returnType: "Object" });
+      // if something is selected:
+      if (params.nodes.length > 0) {
+        filterActive = true;
+        let selectedNodes = params.nodes;
+
+        // hiding all nodes and saving the label
+        for (let nodeId in allNodes) {
+          allNodes[nodeId].hidden = true;
+          if (allNodes[nodeId].savedLabel === undefined) {
+            allNodes[nodeId].savedLabel = allNodes[nodeId].label;
+            allNodes[nodeId].label = undefined;
+          }
+        }
+
+        for (let i = 0; i < selectedNodes.length; i++) {
+          allNodes[selectedNodes[i]].hidden = false;
+          if (allNodes[selectedNodes[i]].savedLabel !== undefined) {
+            allNodes[selectedNodes[i]].label = allNodes[selectedNodes[i]].savedLabel;
+            allNodes[selectedNodes[i]].savedLabel = undefined;
+          }
+        }
+
+      } else if (filterActive === true) {
+        // reset all nodes
+        for (let nodeId in allNodes) {
+          allNodes[nodeId].hidden = false;
+          if (allNodes[nodeId].savedLabel !== undefined) {
+            allNodes[nodeId].label = allNodes[nodeId].savedLabel;
+            allNodes[nodeId].savedLabel = undefined;
+          }
+        }
+
+      }
+
+      // transform the object into an array
+      var updateArray = [];
+      if (params.nodes.length > 0) {
+        for (let nodeId in allNodes) {
+          if (allNodes.hasOwnProperty(nodeId)) {
+            updateArray.push(allNodes[nodeId]);
+          }
+        }
+        nodes.update(updateArray);
+      } else {
+        for (let nodeId in allNodes) {
+          if (allNodes.hasOwnProperty(nodeId)) {
+            updateArray.push(allNodes[nodeId]);
+          }
+        }
+        nodes.update(updateArray);
+      }
+    }
+
+    function selectNode(nodes) {
+      network.selectNodes(nodes);
+
+      network.focus(nodes, {
+        scale: 1.5,
+        animation: {
+          duration: 500,
+          easingFunction: "easeInOutQuad"
+        }
+      })
+
+      neighbourhoodHighlight({ nodes: nodes });
+
+
+
+      return nodes;
+    }
+
+    function selectNodes(nodes) {
+      network.selectNodes(nodes);
+      filterHighlight({ nodes: nodes });
+      return nodes;
+    }
+
+    function highlightFilter(filter) {
+      let selectedNodes = []
+      let selectedProp = filter['property']
+      if (filter['item'] === 'node') {
+        let allNodes = nodes.get({ returnType: "Object" });
+        for (let nodeId in allNodes) {
+          if (allNodes[nodeId][selectedProp] && filter['value'].includes((allNodes[nodeId][selectedProp]).toString())) {
+            selectedNodes.push(nodeId)
+          }
+        }
+      }
+      else if (filter['item'] === 'edge') {
+        let allEdges = edges.get({ returnType: 'object' });
+        // check if the selected property exists for selected edge and select the nodes connected to the edge
+        for (let edge in allEdges) {
+          if (allEdges[edge][selectedProp] && filter['value'].includes((allEdges[edge][selectedProp]).toString())) {
+            selectedNodes.push(allEdges[edge]['from'])
+            selectedNodes.push(allEdges[edge]['to'])
+          }
+        }
+      }
+      selectNodes(selectedNodes)
+    }</script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css"
+    integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js"
+    integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+
+
+
+
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.0.0-rc.4/css/tom-select.min.css"
+    integrity="sha512-43fHB3GLgZfz8QXl1RPQ8O66oIgv3po9cJ5erMt1c4QISq9dYb195T3vr5ImnJPXuVroKcGBPXBFKETW8jrPNQ=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.0.0-rc.4/js/tom-select.complete.js"
+    integrity="sha512-jeF9CfnvzDiw9G9xiksVjxR2lib44Gnovvkv+3CgCG6NXCD4gqlA5nDAVW5WjpA+i+/zKsUWV5xNEbW1X/HH0Q=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+
+
+  <center>
+    <h1></h1>
+  </center>
+
+  <!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6" crossorigin="anonymous" />
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+    crossorigin="anonymous"></script>
+
+
+  <center>
+    <h1></h1>
+  </center>
+  <style type="text/css">
+    #mynetwork {
+      width: 100%;
+      height: 600px;
+      background-color: #ffffff;
+      border: 1px solid lightgray;
+      position: relative;
+      float: left;
+    }
+
+    #loadingBar {
+      position: absolute;
+      top: 0px;
+      left: 0px;
+      width: 100%;
+      height: 600px;
+      background-color: rgba(200, 200, 200, 0.8);
+      -webkit-transition: all 0.5s ease;
+      -moz-transition: all 0.5s ease;
+      -ms-transition: all 0.5s ease;
+      -o-transition: all 0.5s ease;
+      transition: all 0.5s ease;
+      opacity: 1;
+    }
+
+    #bar {
+      position: absolute;
+      top: 0px;
+      left: 0px;
+      width: 20px;
+      height: 20px;
+      margin: auto auto auto auto;
+      border-radius: 11px;
+      border: 2px solid rgba(30, 30, 30, 0.05);
+      background: rgb(0, 173, 246);
+      /* Old browsers */
+      box-shadow: 2px 0px 4px rgba(0, 0, 0, 0.4);
+    }
+
+    #border {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 500px;
+      height: 23px;
+      margin: auto auto auto auto;
+      box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+      border-radius: 10px;
+    }
+
+    #text {
+      position: absolute;
+      top: 8px;
+      left: 530px;
+      width: 30px;
+      height: 50px;
+      margin: auto auto auto auto;
+      font-size: 22px;
+      color: #000000;
+    }
+
+    div.outerBorder {
+      position: relative;
+      top: 400px;
+      width: 600px;
+      height: 44px;
+      margin: auto auto auto auto;
+      border: 8px solid rgba(0, 0, 0, 0.1);
+      background: rgb(252, 252, 252);
+      /* Old browsers */
+      background: -moz-linear-gradient(top, rgba(252, 252, 252, 1) 0%, rgba(237, 237, 237, 1) 100%);
+      /* FF3.6+ */
+      background: -webkit-gradient(linear, left top, left bottom, color-stop(0%, rgba(252, 252, 252, 1)), color-stop(100%, rgba(237, 237, 237, 1)));
+      /* Chrome,Safari4+ */
+      background: -webkit-linear-gradient(top, rgba(252, 252, 252, 1) 0%, rgba(237, 237, 237, 1) 100%);
+      /* Chrome10+,Safari5.1+ */
+      background: -o-linear-gradient(top, rgba(252, 252, 252, 1) 0%, rgba(237, 237, 237, 1) 100%);
+      /* Opera 11.10+ */
+      background: -ms-linear-gradient(top, rgba(252, 252, 252, 1) 0%, rgba(237, 237, 237, 1) 100%);
+      /* IE10+ */
+      background: linear-gradient(to bottom, rgba(252, 252, 252, 1) 0%, rgba(237, 237, 237, 1) 100%);
+      /* W3C */
+      filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#fcfcfc', endColorstr='#ededed', GradientType=0);
+      /* IE6-9 */
+      border-radius: 72px;
+      box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+    }
+  </style>
+</head>
+
+
+<body>
+  <div class="card" style="width: 100%">
+
+    <div id="select-menu" class="card-header">
+      <div class="row no-gutters">
+        <div class="col-10 pb-2">
+            Search for a protein
+          <select class="form-select" aria-label="Default select example" onchange="selectNode([value]);"
+            id="select-node" placeholder="Select Protein...">
+    <option value="Q86VW0">SESTD1 [ ]</option>
+    <option value="Q9GZY8-5">ID: Q9GZY8-5</option>
+    <option value="P17482">HOXB9 [ HOXB9, HOX2E ]</option>
+    <option value="P12314">FCGR1A [ FCGR1A, IGFR1, CD64 ]</option>
+    <option value="Q63635">ID: Q63635</option>
+    <option value="P50402">EMD [ EMD, EDMD, STA ]</option>
+    <option value="O76064">RNF8 [ RNF8, KIAA0646 ]</option>
+    <option value="Q6ZPD8">DGAT2L6 [ DGAT2L6, DC3 ]</option>
+    <option value="Q13322-4">ID: Q13322-4</option>
+    <option value="O14925">TIMM23 [ TIMM23 ]</option>
+    <option value="Q8NHV1">GIMAP7 [ GIMAP7 ]</option>
+    <option value="O14880">MGST3 [ MGST3 ]</option>
+    <option value="Q12837">POU4F2 [ POU4F2, BRN3B ]</option>
+    <option value="Q96GM1">PLPPR2 [ PLPPR2, PRG4 ]</option>
+    <option value="Q6GQQ9">OTUD7B [ OTUD7B, CEZANNE ]</option>
+    <option value="P42575-1">ID: P42575-1</option>
+    <option value="Q3SY46">KRTAP13-3 [ ]</option>
+    <option value="Q9H172">ABCG4 [ ABCG4, WHITE2 ]</option>
+    <option value="Q8WXX5">DNAJC9 [ DNAJC9, JDD1, KIAA0974 ]</option>
+    <option value="Q96L08">SUSD3 [ SUSD3 ]</option>
+    <option value="Q01453">PMP22 [ PMP22, CMT1A, CMT1E, DSS, CIDP ]</option>
+    <option value="Q9NUQ2">AGPAT5 [ AGPAT5 ]</option>
+    <option value="Q00013">MPP1 [ MPP1, PEMP, EMP55 ]</option>
+    <option value="Q9UHP7-3">ID: Q9UHP7-3</option>
+    <option value="O43561-2">ID: O43561-2</option>
+    <option value="Q9BWF3-1">ID: Q9BWF3-1</option>
+    <option value="Q14973">SLC10A1 [ SLC10A1, NTCP1, FHCA2 ]</option>
+    <option value="Q6PI78">TMEM65 [ TMEM65 ]</option>
+    <option value="P78329">CYP4F2 [ CYP4F2 ]</option>
+    <option value="P0DN84">STRIT1 [ DWORF, LOC100507537 ]</option>
+    <option value="Q9NZ43">USE1 [ USE1, MDS032 ]</option>
+    <option value="Q01959">SLC6A3 [ SLC6A3, DAT1, PKDYS1 ]</option>
+    <option value="Q13257">MAD2L1 [ MAD2L1 ]</option>
+    <option value="Q8NF91-11">ID: Q8NF91-11</option>
+    <option value="Q6TCH4">PAQR6 [ PAQR6 ]</option>
+    <option value="Q9NQQ7-3">ID: Q9NQQ7-3</option>
+    <option value="P23276">KEL [ KEL ]</option>
+    <option value="Q96AA3">RFT1 [ RFT1, CDG1N ]</option>
+    <option value="Q9BUN8">DERL1 [ DERL1, DER1 ]</option>
+    <option value="Q13520">AQP6 [ AQP6, AQP2L ]</option>
+    <option value="Q5T7V8">GORAB [ GORAB, SCYL1BP1, NTKLBP1, GO ]</option>
+    <option value="Q96GG9">DCUN1D1 [ DCUN1D1, RP42 ]</option>
+    <option value="Q8N2U9">SLC66A2 [ ]</option>
+    <option value="Q15645">TRIP13 [ TRIP13, 16E1BP, MVA3, OZEMA9 ]</option>
+    <option value="Q68G75">LEMD1 [ LEMD1 ]</option>
+    <option value="Q15323">KRT31 [ KRT31, KRTHA1, HA1 ]</option>
+    <option value="Q8IVP5">FUNDC1 [ FUNDC1 ]</option>
+    <option value="P60410">KRTAP10-8 [ ]</option>
+    <option value="A8MW92">PHF20L1 [ PHF20L1 ]</option>
+    <option value="Q8IUC1">KRTAP11-1 [ KRTAP11-1, HACL1 ]</option>
+    <option value="Q5TCZ1">SH3PXD2A [ SH3PXD2A, FISH, TKS5 ]</option>
+    <option value="Q9Y371">SH3GLB1 [ SH3GLB1, KIAA0491 ]</option>
+    <option value="Q08117-2">ID: Q08117-2</option>
+    <option value="Q96EQ0">SGTB [ SGTB ]</option>
+    <option value="Q5BJH2-2">ID: Q5BJH2-2</option>
+    <option value="Q9Y468">L3MBTL1 [ L3MBTL1, L3MBTL, KIAA0681 ]</option>
+    <option value="Q96JA4">MS4A14 [ ]</option>
+    <option value="Q8R5C8">ID: Q8R5C8</option>
+    <option value="Q9H8Y8">GORASP2 [ GORASP2, GRASP55 ]</option>
+    <option value="P00519">ABL1 [ ABL1, CHDSKM ]</option>
+    <option value="Q96F15">GIMAP5 [ GIMAP5, IAN4L1, IMAP3, NCPH2 ]</option>
+    <option value="Q15836">VAMP3 [ VAMP3 ]</option>
+    <option value="Q9ULX6">AKAP8L [ AKAP8L, HA95, NAKAP, HAP95 ]</option>
+    <option value="P15151">PVR [ PVR, PVS ]</option>
+    <option value="Q96HE8">TMEM80 [ TMEM80 ]</option>
+    <option value="Q8N720">ZNF655 [ ZNF655, VIK ]</option>
+    <option value="O60636">TSPAN2 [ TSPAN2, NET3 ]</option>
+    <option value="Q9UKR5">ERG28 [ ERG28, C14orf1 ]</option>
+    <option value="Q562F6">SGO2 [ SGOL2, SGO2, TRIPIN ]</option>
+    <option value="Q99549">MPHOSPH8 [ MPHOSPH8, TWA3 ]</option>
+    <option value="Q5T5A8">LCE3C [ LCE3C, LEP15 ]</option>
+    <option value="Q6ICL7">SLC35E4 [ ]</option>
+    <option value="P27540">ARNT [ ARNT ]</option>
+    <option value="Q96PS8">AQP10 [ AQP10 ]</option>
+    <option value="Q13277">STX3 [ STX3, STX3A, DIAR12, MVID2, RDMVID ]</option>
+    <option value="Q8NDZ2">SIMC1 [ SIMC1, PLEIAD ]</option>
+    <option value="Q9BTX3">TMEM208 [ TMEM208, HSPC171 ]</option>
+    <option value="P09467">FBP1 [ FBP1 ]</option>
+    <option value="Q8WV19">SFT2D1 [ ]</option>
+    <option value="Q69YG0">TMEM42 [ ]</option>
+    <option value="Q9UHD9">UBQLN2 [ UBQLN2, PLIC2, CHAP1, ALS15 ]</option>
+    <option value="O43829">ZBTB14 [ ZFP161, ZF5 ]</option>
+    <option value="Q9BT40">INPP5K [ INPP5K, SKIP, MDCCAID ]</option>
+    <option value="Q9GZT9">EGLN1 [ EGLN1, PHD2, HIFPH2, C1orf12, ZMYND6, SM20, ECYT3, HALAH ]</option>
+    <option value="P04233-2">ID: P04233-2</option>
+    <option value="P40818">USP8 [ USP8, HUMORF8, PITA4 ]</option>
+    <option value="Q9NRI5">DISC1 [ DISC1, SCZD9 ]</option>
+    <option value="P26371">KRTAP5-9 [ KRTAP5-9, KRN1 ]</option>
+    <option value="P78371">CCT2 [ CCT2, CCTB ]</option>
+    <option value="Q68D86">CCDC102B [ ]</option>
+    <option value="P11215">ITGAM [ ITGAM, CR3A, CD11B, MAC1A, SLEB6 ]</option>
+    <option value="Q96GD4">AURKB [ STK12, ARK2, AIK2, AIM1 ]</option>
+    <option value="Q9H5K3">POMK [ POMK, SGK196, MDDGA12, MDDGC12 ]</option>
+    <option value="J3KQ12">ID: J3KQ12</option>
+    <option value="Q7Z5P4">HSD17B13 [ HSD17B13, SCDR9, FLDP ]</option>
+    <option value="P07339">CTSD [ CTSD, CPSD, CLN10 ]</option>
+    <option value="P49736">MCM2 [ MCM2, CDCL1, DFNA70 ]</option>
+    <option value="P42858">HTT [ HTT, HD, IT15, LOMARS ]</option>
+    <option value="Q92520">FAM3C [ FAM3C ]</option>
+    <option value="P55899">FCGRT [ FCGRT ]</option>
+    <option value="P49682">CXCR3 [ CXCR3, GPR9, CD182 ]</option>
+    <option value="Q96G79">SLC35A4 [ SLC35A4 ]</option>
+    <option value="P27105">STOM [ STOM, EPB72, BND7 ]</option>
+    <option value="Q8TB24">RIN3 [ RIN3, FLJ22349 ]</option>
+    <option value="Q14142">TRIM14 [ TRIM14, KIAA0129 ]</option>
+    <option value="O43463">SUV39H1 [ SUV39H1 ]</option>
+    <option value="P59991">KRTAP12-2 [ ]</option>
+    <option value="Q5TA81">LCE2C [ LCE2C, LEP11 ]</option>
+    <option value="Q96CS7">PLEKHB2 [ PLEKHB2, EVT2 ]</option>
+    <option value="P0DPK4">NOTCH2NLC [ NOTCH2NLC, NIID, ETM6, OPDM3 ]</option>
+    <option value="P78560">CRADD [ CRADD, RAIDD, MRT34 ]</option>
+    <option value="Q8N386">LRRC25 [ LRRC25, MAPA ]</option>
+    <option value="P68036">UBE2L3 [ UBE2L3, UBCH7 ]</option>
+    <option value="O00187">MASP2 [ MASP2 ]</option>
+    <option value="Q8NHP8">PLBD2 [ PLBD2, p76 ]</option>
+    <option value="P04626">ERBB2 [ ERBB2, NGL, NEU, HER2, VSCN2 ]</option>
+    <option value="Q5SR56">MFSD14B [ MFSD14B ]</option>
+    <option value="P32242">OTX1 [ OTX1 ]</option>
+    <option value="Q96IW7">SEC22A [ SEC22A, SEC22L2 ]</option>
+    <option value="Q9H2C2">ARV1 [ ARV1, DEE38 ]</option>
+    <option value="P30273">FCER1G [ FCER1G ]</option>
+    <option value="Q5JR59">MTUS2 [ MTUS2, TIP150, CAZIP, KIAA0774 ]</option>
+    <option value="Q9Z0S6">ID: Q9Z0S6</option>
+    <option value="Q96KR6">FAM210B [ FAM210B, C20orf108 ]</option>
+    <option value="P35609">ACTN2 [ ACTN2, CMD1AA, CMH23, CMYO8, MPD6 ]</option>
+    <option value="Q9NRQ5">SMCO4 [ C11orf75, FN5 ]</option>
+    <option value="Q8NFT6-2">ID: Q8NFT6-2</option>
+    <option value="Q7Z3S9">NOTCH2NLA [ NOTCH2NLA ]</option>
+    <option value="Q9NVC3">SLC38A7 [ SLC38A7, SNAT7 ]</option>
+    <option value="Q14318">FKBP8 [ FKBP8, FKBP38 ]</option>
+    <option value="P81534">DEFB103A [ ]</option>
+    <option value="O75400-2">ID: O75400-2</option>
+    <option value="Q8TDV0">GPR151 [ GPR151, GALRL, GALR4 ]</option>
+    <option value="P22732">SLC2A5 [ SLC2A5, GLUT5 ]</option>
+    <option value="Q4LDR2">CTXN3 [ KABE ]</option>
+    <option value="B2RUZ4">SMIM1 [ SMIM1, VEL ]</option>
+    <option value="Q9UER7-1">ID: Q9UER7-1</option>
+    <option value="O75164">KDM4A [ KDM4A, JMJD2A, JHDM3A, KIAA0677 ]</option>
+    <option value="P62993">GRB2 [ GRB2 ]</option>
+    <option value="P62136">PPP1CA [ PPP1CA, PPP1A ]</option>
+    <option value="Q9UPZ6">THSD7A [ THSD7A, KIAA0960 ]</option>
+    <option value="Q9HCJ2">LRRC4C [ LRRC4C, NGL1, KIAA1580 ]</option>
+    <option value="Q9NWD8">TMEM248 [ ]</option>
+    <option value="Q8WYA1-3">ID: Q8WYA1-3</option>
+    <option value="Q8IWU4">SLC30A8 [ SLC30A8, ZNT8 ]</option>
+    <option value="Q76N32-2">ID: Q76N32-2</option>
+    <option value="Q12983">BNIP3 [ BNIP3, NIP3 ]</option>
+    <option value="Q12981">BNIP1 [ BNIP1, NIP1 ]</option>
+    <option value="O14503">BHLHE40 [ BHLHE40, HLHB2, STRA13, DEC1 ]</option>
+    <option value="P62805">H4C1 [ ]</option>
+    <option value="Q9NUH8">TMEM14B [ TMEM14B ]</option>
+    <option value="Q9HD20-3">ID: Q9HD20-3</option>
+    <option value="Q92570">NR4A3 [ CSMF ]</option>
+    <option value="Q9HCY8">S100A14 [ S100A14, BCMP84 ]</option>
+    <option value="P54252">ATXN3 [ ATXN3, MJD, SCA3 ]</option>
+    <option value="Q6ZVE7">GOLT1A [ GOLT1A, GOT1B ]</option>
+    <option value="P29122">PCSK6 [ PCSK6, PACE4, SPC4 ]</option>
+    <option value="O95125">ZNF202 [ ZNF202 ]</option>
+    <option value="P38991">ID: P38991</option>
+    <option value="Q4VCS5-2">ID: Q4VCS5-2</option>
+    <option value="Q9Y5U4">INSIG2 [ INSIG2 ]</option>
+    <option value="Q53FV1">ORMDL2 [ ORMDL2 ]</option>
+    <option value="G2XKQ0">SUMO1P1 [ ]</option>
+    <option value="Q07837">SLC3A1 [ SLC3A1, ATR1, D2H, NBAT ]</option>
+    <option value="Q9BRK0">REEP2 [ REEP2, C5orf19, SPG72A, SPG72B ]</option>
+    <option value="P61964">WDR5 [ WDR5, BIG3 ]</option>
+    <option value="Q04941">PLP2 [ PLP2 ]</option>
+    <option value="Q7Z417">NUFIP2 [ NUFIP2, KIAA1321, PIG1 ]</option>
+    <option value="A8MV65-2">ID: A8MV65-2</option>
+    <option value="P30825">SLC7A1 [ SLC7A1, ATRC1 ]</option>
+    <option value="P49368">CCT3 [ CCT3, TRIC5 ]</option>
+    <option value="P32942">ICAM3 [ ICAM3, CDW50 ]</option>
+    <option value="Q6FHY5">ID: Q6FHY5</option>
+    <option value="Q9UH03">SEPTIN3 [ SEPT3, SEP3 ]</option>
+    <option value="Q9P0S3">ORMDL1 [ ORMDL1 ]</option>
+    <option value="Q9UNK0">STX8 [ STX8 ]</option>
+    <option value="O95153">TSPOAP1 [ TSPOAP1, RIMBP1, KIAA0612, BZRAP1, PRAX1, DYT22 ]</option>
+    <option value="Q5JX71">FAM209A [ ]</option>
+    <option value="P49321">NASP [ NASP ]</option>
+    <option value="O43281-2">ID: O43281-2</option>
+    <option value="Q9BQI6">SLF1 [ SLF1, BRCTX ]</option>
+    <option value="Q8N5X7-2">ID: Q8N5X7-2</option>
+    <option value="Q96CE8">TM4SF18 [ ]</option>
+    <option value="P10721">KIT [ KIT, PBT, MASTC ]</option>
+    <option value="Q9Y680">FKBP7 [ FKBP7, FKBP23 ]</option>
+    <option value="P06729">CD2 [ CD2 ]</option>
+    <option value="Q9NRZ5">AGPAT4 [ AGPAT4 ]</option>
+    <option value="P51946">CCNH [ CCNH, CAK ]</option>
+    <option value="Q9BXJ8">TMEM120A [ TMEM120A, TMPIT, NET29 ]</option>
+    <option value="Q5S007">LRRK2 [ LRRK2, PARK8 ]</option>
+    <option value="Q6ZUI0">TPRG1 [ ]</option>
+    <option value="O43609">SPRY1 [ SPRY1 ]</option>
+    <option value="Q13191">CBLB [ CBLB, ADMIO3 ]</option>
+    <option value="Q6ZT21">TMPPE [ ]</option>
+    <option value="O95159">ZFPL1 [ ZFPL1 ]</option>
+    <option value="O95363">FARS2 [ FARS2, FARS1, COXPD14, SPG77 ]</option>
+    <option value="Q0VD86">INCA1 [ INCA1, HSD45 ]</option>
+    <option value="P28799">GRN [ GRN, CLN11, FTD2 ]</option>
+    <option value="Q9BUZ4">TRAF4 [ TRAF4, MLN62, CART1 ]</option>
+    <option value="A5D8V6">VPS37C [ VPS37C ]</option>
+    <option value="Q9BU79">TMEM243 [ TMEM243, C7orf23, MMTRAG ]</option>
+    <option value="Q96D05-2">ID: Q96D05-2</option>
+    <option value="Q9Y282">ERGIC3 [ ERGIC3, C2orf47 ]</option>
+    <option value="Q9UJV3-2">ID: Q9UJV3-2</option>
+    <option value="Q96SB8">SMC6 [ SMC6L1, SMC6 ]</option>
+    <option value="Q8TC99">FNDC8 [ ]</option>
+    <option value="Q9Y6G1">TMEM14A [ TMEM14A ]</option>
+    <option value="P27449">ATP6V0C [ ATP6V0C, ATP6L, ATP6C, EPEO3 ]</option>
+    <option value="Q9BYR7">KRTAP3-2 [ ]</option>
+    <option value="P55061">TMBIM6 [ TMBIM6, TEGT ]</option>
+    <option value="P54253">ATXN1 [ ATXN1, ATX1, SCA1 ]</option>
+    <option value="Q13287">NMI [ NMI ]</option>
+    <option value="A2BDD9">ID: A2BDD9</option>
+    <option value="P42227">ID: P42227</option>
+    <option value="Q92997">DVL3 [ DVL3, DRS3 ]</option>
+    <option value="Q14802-3">ID: Q14802-3</option>
+    <option value="O15529">GPR42 [ GPR42 ]</option>
+    <option value="P56557">TMEM50B [ TMEM50B, C21orf4 ]</option>
+    <option value="O75716">STK16 [ STK16, TSF1 ]</option>
+    <option value="Q9Y3D6">FIS1 [ FIS1, TTC11 ]</option>
+    <option value="P60411">KRTAP10-9 [ ]</option>
+    <option value="P04908">H2AC4 [ ]</option>
+    <option value="Q14108">SCARB2 [ SCARB2, CD36L2, LIMPII, AMRF, EPM4 ]</option>
+    <option value="Q7Z3T8">ZFYVE16 [ ZFYVE16, ENDOFIN, KIAA0305 ]</option>
+    <option value="P23763-3">ID: P23763-3</option>
+    <option value="O75971">SNAPC5 [ SNAPC5, SNAP19 ]</option>
+    <option value="Q8N2M4">TMEM86A [ ]</option>
+    <option value="P49639">HOXA1 [ HOXA1, HOX1F, BSAS ]</option>
+    <option value="Q969L2">MAL2 [ MAL2 ]</option>
+    <option value="Q8WW24">TEKT4 [ ]</option>
+    <option value="Q8TE68">EPS8L1 [ EPS8L1, EPS8R1 ]</option>
+    <option value="Q9HC98-4">ID: Q9HC98-4</option>
+    <option value="Q02930-3">ID: Q02930-3</option>
+    <option value="O43889-2">ID: O43889-2</option>
+    <option value="P49810">PSEN2 [ PSEN2, AD4, STM2, CMD1V ]</option>
+    <option value="P52815">MRPL12 [ MRPL12, RPML12 ]</option>
+    <option value="Q8WUP2">FBLIM1 [ FBLIM1, FBLP1, MIGFILIN ]</option>
+    <option value="P46940">IQGAP1 [ IQGAP1, SAR1 ]</option>
+    <option value="Q9NV12">TMEM140 [ ]</option>
+    <option value="Q13113">PDZK1IP1 [ PDZK1IP1, MAP17 ]</option>
+    <option value="A0A0S2Z5W9">ID: A0A0S2Z5W9</option>
+    <option value="Q15848">ADIPOQ [ ADIPOQ, APM1, GBP28, ADIPQTL1 ]</option>
+    <option value="Q6ICB0">DESI1 [ DESI1, PPPDE2 ]</option>
+    <option value="P26951">IL3RA [ IL3RA ]</option>
+    <option value="O96000">NDUFB10 [ NDUFB10, MC1DN35 ]</option>
+    <option value="P54652">HSPA2 [ HSPA2 ]</option>
+    <option value="O95292">VAPB [ VAPBC, VAPB, VAPC, ALS8 ]</option>
+    <option value="Q9NVA2">SEPTIN11 [ 11-Sep ]</option>
+    <option value="Q9BZJ8">GPR61 [ GPR61 ]</option>
+    <option value="Q3LHN2">KRTAP19-2 [ ]</option>
+    <option value="Q96RU7">TRIB3 [ TRIB3, NIPK, SINK, C20orf97, SKIP3 ]</option>
+    <option value="P25554">ID: P25554</option>
+    <option value="Q99726">SLC30A3 [ SLC30A3, ZNT3 ]</option>
+    <option value="Q9Y2K6">USP20 [ USP20, VDU2 ]</option>
+    <option value="Q5JR59-3">ID: Q5JR59-3</option>
+    <option value="Q3MIN7">RGL3 [ RGL3 ]</option>
+    <option value="Q9BYR9">KRTAP2-4 [ ]</option>
+    <option value="O43741">PRKAB2 [ PRKAB2 ]</option>
+    <option value="P49321-2">ID: P49321-2</option>
+    <option value="Q96DC9">OTUB2 [ OTUB2, OTU2, OTB2, C14orf137 ]</option>
+    <option value="Q9NRX6">TMEM167B [ ]</option>
+    <option value="P14618-1">ID: P14618-1</option>
+    <option value="O75928-2">ID: O75928-2</option>
+    <option value="Q92624">APPBP2 [ APPBP2, PAT1 ]</option>
+    <option value="Q99816">TSG101 [ TSG101 ]</option>
+    <option value="A8MQ03">CYSRT1 [ ]</option>
+    <option value="P61244">MAX [ MAX, PDMCS ]</option>
+    <option value="O60573">EIF4E2 [ EIF4E2, EIF4EL3, 4EHP ]</option>
+    <option value="Q9H0E2">TOLLIP [ TOLLIP ]</option>
+    <option value="O60260-5">ID: O60260-5</option>
+    <option value="Q9Y228">TRAF3IP3 [ TRAF3IP3, T3JAM ]</option>
+    <option value="Q9P287">BCCIP [ BCCIP, TOK1 ]</option>
+    <option value="Q8TED1">GPX8 [ GPX8 ]</option>
+    <option value="Q13323">BIK [ BIK, NBK ]</option>
+    <option value="Q9BVX2">TMEM106C [ ]</option>
+    <option value="Q9NRQ2">PLSCR4 [ PLSCR4 ]</option>
+    <option value="Q5T752">LCE1D [ LCE1D, LEP4 ]</option>
+    <option value="P50570-2">ID: P50570-2</option>
+    <option value="O43765">SGTA [ SGTA, SGT ]</option>
+    <option value="Q8IWZ5">TRIM42 [ TRIM42 ]</option>
+    <option value="O95070">YIF1A [ YIF1A, YIF1 ]</option>
+    <option value="P43628">KIR2DL3 [ KIR2DL3, NKAT2 ]</option>
+    <option value="Q6NSM0">ID: Q6NSM0</option>
+    <option value="Q8WWP7">GIMAP1 [ GIMAP1, IMAP1 ]</option>
+    <option value="P83916">CBX1 [ CBX1 ]</option>
+    <option value="Q6UY14-3">ID: Q6UY14-3</option>
+    <option value="P59910">DNAJB13 [ DNAJB13, TSARG6, CILD34 ]</option>
+    <option value="P49768-2">ID: P49768-2</option>
+    <option value="O00327-8">ID: O00327-8</option>
+    <option value="Q8NBQ5">HSD17B11 [ HSD17B11, RETSDR2, PAN1B ]</option>
+    <option value="P01023">A2M [ A2M ]</option>
+    <option value="Q99832">CCT7 [ CCT7 ]</option>
+    <option value="P51148">RAB5C [ RAB5C, RABL ]</option>
+    <option value="Q7JXA8">ID: Q7JXA8</option>
+    <option value="Q96JQ5">MS4A4A [ MS4A4A, MS4A4 ]</option>
+    <option value="Q92608">DOCK2 [ DOCK2, IMD40 ]</option>
+    <option value="P60228">EIF3E [ EIF3E, EIF3S6, INT6 ]</option>
+    <option value="Q9Y5Z9">UBIAD1 [ UBIAD1, TERE1, SCCD ]</option>
+    <option value="Q08379">GOLGA2 [ GOLGA2, GM130, DEDHMB ]</option>
+    <option value="Q96EW2">HSPBAP1 [ HSPBAP1, PASS1 ]</option>
+    <option value="Q9BVI0">PHF20 [ PHF20, GLEA2, HCA58 ]</option>
+    <option value="Q9Y232">CDYL [ CDYL ]</option>
+    <option value="P13473-2">ID: P13473-2</option>
+    <option value="Q9P0N8">MARCHF2 [ 2-Mar ]</option>
+    <option value="Q4KMG9">TMEM52B [ ]</option>
+    <option value="Q8IYM1">SEPTIN12 [ SEPT12, SPGF10 ]</option>
+    <option value="Q69Z37">ID: Q69Z37</option>
+    <option value="O43559">FRS3 [ FRS3, FRS2B, SNT2 ]</option>
+    <option value="Q9H2L4">TMEM60 [ ]</option>
+    <option value="P63027">VAMP2 [ VAMP2, SYB2, NEDHAHM ]</option>
+    <option value="Q9HBV2">SPACA1 [ SPACA1, SAMP32, SPGF85 ]</option>
+    <option value="A5PKU2">ID: A5PKU2</option>
+    <option value="P58418">CLRN1 [ CLRN1, USH3A, USH3, RP61 ]</option>
+    <option value="Q5T754">LCE1F [ LCE1F, LEP6 ]</option>
+    <option value="Q9H9E3">COG4 [ COG4, COD1, CDG2J, SWILS ]</option>
+    <option value="Q8TBE3">FNDC9 [ ]</option>
+    <option value="Q9UJ14">GGT7 [ GGT7, GGTL3, GGTL5, GGT4 ]</option>
+    <option value="P04792">HSPB1 [ HSPB1, HSP27, CMT2F, HMND3 ]</option>
+    <option value="V9HW96">ID: V9HW96</option>
+    <option value="Q9Y250">LZTS1 [ LZTS1, F37, FEZ1 ]</option>
+    <option value="O95429">BAG4 [ BAG4, SODD ]</option>
+    <option value="P45973">CBX5 [ CBX5, HP1 ]</option>
+    <option value="Q8WZA2">RAPGEF4 [ RAPGEF4, EPAC2 ]</option>
+    <option value="Q5K651">SAMD9 [ SAMD9, NFTC, MIRAGE, M7MLS2 ]</option>
+    <option value="Q96HA8">NTAQ1 [ NTAQ1, C8orf32, WDYHV1 ]</option>
+    <option value="Q8WW18">C17orf50 [ ]</option>
+    <option value="Q03164">KMT2A [ KMT2A, MLL, HRX, WDSTS ]</option>
+    <option value="Q7KZS0">ID: Q7KZS0</option>
+    <option value="Q86WB7-2">ID: Q86WB7-2</option>
+    <option value="Q02161-2">ID: Q02161-2</option>
+    <option value="O75031">HSF2BP [ HSF2BP, POF19 ]</option>
+    <option value="P60409">KRTAP10-7 [ ]</option>
+    <option value="P37840">SNCA [ SNCA, NACP, PARK1, PARK4 ]</option>
+    <option value="Q96EB6">SIRT1 [ SIRT1, SIR2L1 ]</option>
+    <option value="Q8WW34-2">ID: Q8WW34-2</option>
+    <option value="Q9P0L0">VAPA [ VAPA, VAP33 ]</option>
+    <option value="Q8IVP9">ZNF547 [ ]</option>
+    <option value="Q86T13">CLEC14A [ CLEC14A ]</option>
+    <option value="P08047">SP1 [ SP1 ]</option>
+    <option value="Q8TDT2">GPR152 [ ]</option>
+    <option value="O76011">KRT34 [ KRT34, KRTHA4, HA4 ]</option>
+    <option value="P02766">TTR [ TTR, PALB ]</option>
+    <option value="Q9BXK5">BCL2L13 [ BCL2L13 ]</option>
+    <option value="O95214">LEPROTL1 [ LEPROTL1 ]</option>
+    <option value="O43918">AIRE [ AIRE, APECED, APS1 ]</option>
+    <option value="Q13185">CBX3 [ CBX3 ]</option>
+    <option value="P48165">GJA8 [ GJA8, CX50, CTRCT1, CZP1, CAE1 ]</option>
+    <option value="V9HW37">ID: V9HW37</option>
+    <option value="Q12824">SMARCB1 [ SMARCB1, SNF5, INI1, RDT, RTPS1, MRD15, SWNTS1, CSS3 ]</option>
+    <option value="P61020">RAB5B [ RAB5B ]</option>
+    <option value="O00767">SCD [ SCD ]</option>
+    <option value="Q8N6R1">SERP2 [ ]</option>
+    <option value="P19397">CD53 [ CD53, MOX44 ]</option>
+    <option value="Q9NYZ1">TVP23B [ ]</option>
+    <option value="Q9H2H9">SLC38A1 [ SLC38A1 ]</option>
+    <option value="O43752">STX6 [ STX6 ]</option>
+    <option value="Q9BWM7">SFXN3 [ SFXN3 ]</option>
+    <option value="Q9GZT8">NIF3L1 [ NIF3L1 ]</option>
+    <option value="Q9H6H4">REEP4 [ REEP4, C8orf20 ]</option>
+    <option value="Q9UJ78-2">ID: Q9UJ78-2</option>
+    <option value="Q6PL45-2">ID: Q6PL45-2</option>
+    <option value="P63104">YWHAZ [ YWHAZ ]</option>
+    <option value="Q7KYR7-4">ID: Q7KYR7-4</option>
+    <option value="P15941-11">ID: P15941-11</option>
+    <option value="Q8TD46-4">ID: Q8TD46-4</option>
+    <option value="Q8TAV4">STOML3 [ STOML3, SRO ]</option>
+    <option value="Q13643">FHL3 [ FHL3, SLIM2 ]</option>
+    <option value="Q9Y2J4">AMOTL2 [ AMOTL2, KIAA0989 ]</option>
+    <option value="Q12888">TP53BP1 [ TP53BP1, 53BP1 ]</option>
+    <option value="P0CG47">UBB [ UBB ]</option>
+    <option value="O00560">SDCBP [ SDCBP, TACIP18, MDA9 ]</option>
+    <option value="Q9BYR8">KRTAP3-1 [ ]</option>
+    <option value="Q07065">CKAP4 [ CKAP4, CLIMP63 ]</option>
+    <option value="Q9UBY5">LPAR3 [ LPAR3, EDG7, LPA3 ]</option>
+    <option value="Q3KNW5">SLC10A6 [ SLC10A6, SOAT ]</option>
+    <option value="Q8IYF3">TEX11 [ TEX11, SPGFX2 ]</option>
+    <option value="Q5J8X5">MS4A13 [ ]</option>
+    <option value="Q9NZG7">NINJ2 [ NINJ2 ]</option>
+    <option value="Q9BQ66">KRTAP4-12 [ ]</option>
+    <option value="Q6P5X5">C22orf39 [ ]</option>
+    <option value="Q9UNL4">ING4 [ ING4 ]</option>
+    <option value="Q13571">LAPTM5 [ LAPTM5 ]</option>
+    <option value="P38484">IFNGR2 [ IFNGR2, IFNGT1, IFGR2, IMD28 ]</option>
+    <option value="Q96GQ5">RUSF1 [ ]</option>
+    <option value="Q9UL26">RAB22A [ RAB22A ]</option>
+    <option value="Q8WTS6">SETD7 [ SETD7, SET7, KIAA1717 ]</option>
+    <option value="Q9NVL1-2">ID: Q9NVL1-2</option>
+    <option value="Q99719">SEPTIN5 [ SEPT5, PNUTL1, CDCREL ]</option>
+    <option value="P25786">PSMA1 [ PSMA1, PROS30 ]</option>
+    <option value="O95208-2">ID: O95208-2</option>
+    <option value="Q15025">TNIP1 [ TNIP1, NAF1, KIAA0113 ]</option>
+    <option value="Q9Y3C5">RNF11 [ RNF11 ]</option>
+    <option value="P46527">CDKN1B [ CDKN1B, KIP1, CDKN4, MEN4 ]</option>
+    <option value="Q13283">G3BP1 [ G3BP1, G3BP ]</option>
+    <option value="O76024">WFS1 [ WFS1, WFRS, WFS, DFNA6, DFNA14, DFNA38, WFSL, CTRCT41 ]</option>
+    <option value="Q96NT3-2">ID: Q96NT3-2</option>
+    <option value="P45984">MAPK9 [ MAPK9, PRKM9, JNK2 ]</option>
+    <option value="P0CG48">UBC [ UBC ]</option>
+    <option value="Q86YR5-3">ID: Q86YR5-3</option>
+    <option value="P08581">MET [ MET, DFNB97, OSFD, DA11 ]</option>
+    <option value="Q9NR31">SAR1A [ SARA1, SAR1A ]</option>
+    <option value="Q96D03">DDIT4L [ DDIT4L, REDD2 ]</option>
+    <option value="P40763">STAT3 [ STAT3, APRF, HIES, ADMIO1 ]</option>
+    <option value="Q3ZAQ7">VMA21 [ VMA21, XMEA ]</option>
+    <option value="O43448">KCNAB3 [ KCNAB3, KCNA3B ]</option>
+    <option value="Q96RK4">BBS4 [ BBS4 ]</option>
+    <option value="Q9NTJ5">SACM1L [ SACM1L, SAC1, KIAA0851 ]</option>
+    <option value="Q5T4W7">ARTN [ ARTN ]</option>
+    <option value="P41208">CETN2 [ CETN2, CALT ]</option>
+    <option value="Q70EL1-9">ID: Q70EL1-9</option>
+    <option value="Q6H9L7">ISM2 [ ISM2, THSD3, TAIL1 ]</option>
+    <option value="Q96DU3">SLAMF6 [ SLAMF6, NTBA ]</option>
+    <option value="Q8N205-2">ID: Q8N205-2</option>
+    <option value="Q96EG3">ZNF837 [ ]</option>
+    <option value="A8K4G0">CD300LB [ CD300LB, TREM5, IREM3 ]</option>
+    <option value="Q2M2E3">ODF4 [ ODF4, OPPO1 ]</option>
+    <option value="Q9UHI5">SLC7A8 [ SLC7A8, LAT2 ]</option>
+    <option value="O94901">SUN1 [ SUN1, UNC84A, KIAA0810 ]</option>
+    <option value="P06241">FYN [ FYN ]</option>
+    <option value="Q8WV28">BLNK [ BLNK, SLP65, AGM4 ]</option>
+    <option value="Q8N9N5">BANP [ BANP, SMAR1 ]</option>
+    <option value="Q9BZW4">TM6SF2 [ TM6SF2, KIAA1926 ]</option>
+    <option value="Q8IX15-3">ID: Q8IX15-3</option>
+    <option value="P46531">NOTCH1 [ NOTCH1, TAN1, AOS5, AOVD1 ]</option>
+    <option value="Q9BYE3">LCE3D [ LCE3D, LEP16 ]</option>
+    <option value="Q9P0L9">PKD2L1 [ PKD2L1, PKDL, PKD2L ]</option>
+    <option value="Q8WUM4">PDCD6IP [ PDCD6IP, AIP1, ALIX, KIAA1375, MCPH29 ]</option>
+    <option value="Q96ES7">SGF29 [ CCDC101, STAF36 ]</option>
+    <option value="Q07627">KRTAP1-1 [ KRTAP1-1, KAP1.1, KAP1.7, KAP1.6 ]</option>
+    <option value="P05067">APP [ APP, AAA, CVAP, AD1 ]</option>
+    <option value="Q9H9B4">SFXN1 [ SFXN1 ]</option>
+    <option value="P60328">KRTAP12-3 [ ]</option>
+    <option value="Q86W74-2">ID: Q86W74-2</option>
+    <option value="O76003">GLRX3 [ GLRX3, PICOT ]</option>
+    <option value="P78317">RNF4 [ RNF4 ]</option>
+    <option value="Q9NWS0">PIH1D1 [ PIH1D1, NOP17 ]</option>
+    <option value="Q99750">MDFI [ MDFI ]</option>
+    <option value="Q8N4V1">MMGT1 [ MMGT1, EMC5 ]</option>
+    <option value="P48730-2">ID: P48730-2</option>
+    <option value="Q9Y5U9">IER3IP1 [ IER3IP1, MEDS ]</option>
+    <option value="Q9UH99">SUN2 [ SUN2, UNC84B, KIAA0668 ]</option>
+    <option value="Q8IY18">SMC5 [ SMC5, SMC5L1, KIAA0594, ATELS2 ]</option>
+    <option value="Q9NUL5-4">ID: Q9NUL5-4</option>
+    <option value="Q8IUC2">KRTAP8-1 [ ]</option>
+    <option value="Q14141">SEPTIN6 [ SEPT6, SEP2, KIAA0128 ]</option>
+    <option value="Q96B97">SH3KBP1 [ SH3KBP1, CIN85, IMD61, AGMX2 ]</option>
+    <option value="Q6N075">MFSD5 [ MFSD5 ]</option>
+    <option value="P20339">RAB5A [ RAB5A, RAB5 ]</option>
+    <option value="Q9BZS1">FOXP3 [ FOXP3, IPEX, AIID, XPID, PIDX ]</option>
+    <option value="P48643">CCT5 [ CCT5, KIAA0098, CCTE, HSNSP ]</option>
+    <option value="Q8TBB1">LNX1 [ LNX1, LNX, PDZRN2 ]</option>
+    <option value="O43315">AQP9 [ AQP9 ]</option>
+    <option value="Q5VUG0">SFMBT2 [ SFMBT2, KIAA1617 ]</option>
+    <option value="P49901">SMCP [ SMCP, MCSP, MCS ]</option>
+    <option value="Q9BSR8">YIPF4 [ YIPF4 ]</option>
+    <option value="A0PK00">TMEM120B [ TMEM120B ]</option>
+    <option value="O43557">TNFSF14 [ TNFSF14, HVEML ]</option>
+    <option value="O95470">SGPL1 [ SGPL1, SPL, RENI, NPHS14 ]</option>
+    <option value="Q9Q2G4">ID: Q9Q2G4</option>
+    <option value="Q9UMX0">UBQLN1 [ UBQLN1, DA41 ]</option>
+    <option value="Q99IB8">ID: Q99IB8</option>
+    <option value="Q96PV6">LENG8 [ LENG8, KIAA1932 ]</option>
+    <option value="P50222">MEOX2 [ MEOX2 ]</option>
+    <option value="O43933">PEX1 [ PEX1, ZWS1, PBD1A, PBD1B, HMLR1 ]</option>
+    <option value="Q9NRD5">PICK1 [ PICK1, PRKCABP ]</option>
+    <option value="P22681">CBL [ CBL, CBL2, NSLL ]</option>
+    <option value="Q8N6U8">GPR161 [ GPR161 ]</option>
+    <option value="P05455">SSB [ SSB, LARP3 ]</option>
+    <option value="Q8TEC5">SH3RF2 [ SH3RF2, HEPP1 ]</option>
+    <option value="Q8N6F1">CLDN19 [ CLDN19, HOMG5 ]</option>
+    <option value="Q15464">SHB [ SHB ]</option>
+    <option value="H0YKK7">GOLGA6L19 [ ]</option>
+    <option value="Q9H013">ADAM19 [ ADAM19, MLTNB ]</option>
+    <option value="O15033">AREL1 [ AREL1, KIAA0317 ]</option>
+    <option value="Q9H553">ALG2 [ ALG2, CDGII, CMSTA3, CMS14 ]</option>
+    <option value="Q15013">MAD2L1BP [ MAD2L1BP ]</option>
+    <option value="O75363">BCAS1 [ BCAS1, NABC1 ]</option>
+    <option value="Q15075">EEA1 [ EEA1 ]</option>
+    <option value="Q8WXQ3">LINC01599 [ ]</option>
+    <option value="Q9Y5K6">CD2AP [ CD2AP, CMS ]</option>
+    <option value="P45844">ABCG1 [ ABCG1, ABC8, WHITE1 ]</option>
+    <option value="Q5T9A4">ATAD3B [ ATAD3B, TOB3, KIAA1273 ]</option>
+    <option value="Q9H305">CDIP1 [ CDIP1, C16orf5 ]</option>
+    <option value="P56730">PRSS12 [ PRSS12, BSSP3, MRT1 ]</option>
+    <option value="Q8N8I0">SAMD12 [ SAMD12 ]</option>
+    <option value="Q9P0J7">KCMF1 [ KCMF1, DEBT91, FIGC ]</option>
+    <option value="nan"> [ ]</option>
+    <option value="Q32NC0">C18orf21 [ ]</option>
+    <option value="Q99758">ABCA3 [ ABCA3, ABC3, SMDP3 ]</option>
+    <option value="Q6MZT1">RGS7BP [ RGS7BP, R7BP ]</option>
+    <option value="Q8TAD7">OCC1 [ ]</option>
+    <option value="Q9P2Q2">FRMD4A [ FRMD4A, KIAA1294, CCAFCA ]</option>
+    <option value="Q8IX21">SLF2 [ SLF2, FAM178A, C10orf6, ATELS1 ]</option>
+    <option value="Q8IU99">CALHM1 [ CALHM1, FAM26C ]</option>
+    <option value="A6NDL8">OR6C68 [ ]</option>
+    <option value="Q05952">TNP2 [ TNP2 ]</option>
+    <option value="Q8WYJ6">SEPTIN1 [ SEPT1, DIFF6 ]</option>
+    <option value="Q9NY72">SCN3B [ SCN3B, SCNB3, BRGDA7, ATFB16 ]</option>
+    <option value="Q8NF91">SYNE1 [ SYNE1, KIAA0796, KIAA1756, KIAA1262, SCAR8, EDMD4, AMC3 ]</option>
+    <option value="Q9UH36">SRRD [ SRRD ]</option>
+    <option value="Q14746">COG2 [ COG2, LDLC, CDG2Q ]</option>
+    <option value="Q92784">DPF3 [ DPF3, CERD4 ]</option>
+    <option value="P30084">ECHS1 [ ECHS1, SCEH, ECHS1D ]</option>
+    <option value="Q96JK9">MAML3 [ MAML3, MAM2, KIAA1816 ]</option>
+    <option value="Q30KP8">DEFB136 [ ]</option>
+    <option value="Q9BTX1">NDC1 [ TMEM48, NDC1 ]</option>
+    <option value="P56373">P2RX3 [ P2RX3, P2X3 ]</option>
+    <option value="Q08708">CD300C [ CMRF35, CMRF35A ]</option>
+    <option value="P68431">H3C1 [ ]</option>
+    <option value="P50876">RNF144A [ RNF144A, UIP4, KIAA0161 ]</option>
+    <option value="Q6IQ49">SDE2 [ SDE2 ]</option>
+    <option value="Q7Z553">MDGA2 [ MDGA2 ]</option>
+    <option value="P47881">OR3A1 [ ]</option>
+    <option value="Q9Y657">SPIN1 [ SPIN, SPIN1 ]</option>
+    <option value="Q96GR4">ZDHHC12 [ ]</option>
+    <option value="Q8TDN7">ACER1 [ ACER1 ]</option>
+    <option value="Q9H0E7">USP44 [ USP44 ]</option>
+    <option value="A0A1B0GX68">TRBV2 [ ]</option>
+    <option value="Q13046">PSG7 [ PSG7 ]</option>
+    <option value="O60609">GFRA3 [ GFRA3 ]</option>
+    <option value="Q99578">RIT2 [ RIT2, RIN, ROC2 ]</option>
+    <option value="Q14444">CAPRIN1 [ CAPRIN1, M11S1, GPIAP1, GRIP137, CONDCAC, NEDLAAD ]</option>
+    <option value="O60232">ZNRD2 [ ZNRD2, SSSCA1 ]</option>
+    <option value="P0DPH7">TUBA3C [ TUBA2 ]</option>
+    <option value="Q99814">EPAS1 [ EPAS1, MOP2, HIF2A, ECYT4 ]</option>
+    <option value="O43155">FLRT2 [ FLRT2 ]</option>
+    <option value="P0DSE1">TRA [ ]</option>
+    <option value="P16949">STMN1 [ STMN1, LAP18, SMN ]</option>
+    <option value="Q9NYL9">TMOD3 [ TMOD3 ]</option>
+    <option value="Q96LW1">ZNF354B [ ]</option>
+    <option value="Q96S79">RASL10B [ RASL10B, RRP17 ]</option>
+    <option value="Q8NH21">OR4F5 [ ]</option>
+    <option value="Q96R08">OR5B12 [ ]</option>
+    <option value="P82251">SLC7A9 [ SLC7A9, CSNU3 ]</option>
+    <option value="O75556">SCGB2A1 [ SCGB2A1, MGB2, LPNC ]</option>
+    <option value="O43159">RRP8 [ RRP8, NML, KIAA0409 ]</option>
+    <option value="P0C0L5">C4B [ ]</option>
+    <option value="Q96AG3">SLC25A46 [ SLC25A46, HMSN6B, PCH1E ]</option>
+    <option value="Q96CH1">GPR146 [ ]</option>
+    <option value="P63173">RPL38 [ RPL38 ]</option>
+    <option value="P49189">ALDH9A1 [ ALDH9A1, ALDH9, E3 ]</option>
+    <option value="Q9UG22">GIMAP2 [ GIMAP2, IMAP2 ]</option>
+    <option value="Q9UQP3">TNN [ TNN ]</option>
+    <option value="P42575">CASP2 [ CASP2, NEDD2, ICH1, MRT80 ]</option>
+    <option value="Q96FQ6">S100A16 [ S100A16, AAG13 ]</option>
+    <option value="Q9Y5G7">PCDHGA6 [ PCDHGA6 ]</option>
+    <option value="O60547">GMDS [ GMDS ]</option>
+    <option value="P63135">ERVK-7 [ ERVK-7, HERV-KIII, HERV-K102 ]</option>
+    <option value="Q92824">PCSK5 [ PCSK5 ]</option>
+    <option value="P04844">RPN2 [ RPN2 ]</option>
+    <option value="Q9P1F3">ABRACL [ ]</option>
+    <option value="Q5SSJ5">HP1BP3 [ HP1BP3, HP1BP74 ]</option>
+    <option value="P07357">C8A [ C8A ]</option>
+    <option value="Q8IZM8">ZNF654 [ ]</option>
+    <option value="Q16613">AANAT [ AANAT, SNAT ]</option>
+    <option value="Q86UV7">TRIM73 [ TRIM73, TRIM50B ]</option>
+    <option value="Q5T2N8">ATAD3C [ ATAD3C ]</option>
+</select>
+        </div>
+        <div class="col-2 pb-2">
+          <button type="button" class="btn btn-primary btn-block" onclick="neighbourhoodHighlight({nodes: []});">Reset Selection</button>
+        </div>
+      </div>
+    </div>
+
+    
+    <div id="mynetwork" class="card-body"></div>
+  </div>
+
+    <div id="loadingBar">
+      <div class="outerBorder">
+        <div id="text">0%</div>
+        <div id="border">
+          <div id="bar"></div>
+        </div>
+      </div>
+    </div>
+
+
+
+
+  <script type="text/javascript">
+
+      // initialize global variables.
+      var edges;
+      var nodes;
+      var allNodes;
+      var allEdges;
+      var nodeColors;
+      var originalNodes;
+      var network;
+      var container;
+      var options, data;
+      var filter = {
+        item: '',
+        property: '',
+        value: []
+      };
+
+
+      new TomSelect("#select-node", {
+        create: false,
+        sortField: {
+          field: "text",
+          direction: "asc"
+        }
+
+      });
+
+      // This method is responsible for drawing the graph, returns the drawn network
+      function drawGraph() {
+        var container = document.getElementById('mynetwork');
+
+
+
+        // parsing and collecting nodes and edges from the python
+        nodes = new vis.DataSet([
+    {"color": "#FF0000", "id": "P05455", "label": "SSB", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q8TEC5", "label": "SH3RF2", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q8N6F1", "label": "CLDN19", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q15464", "label": "SHB", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "H0YKK7", "label": "GOLGA6L19", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q9H013", "label": "ADAM19", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "O15033", "label": "AREL1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q9H553", "label": "ALG2", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q15013", "label": "MAD2L1BP", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "O75363", "label": "BCAS1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q15075", "label": "EEA1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q8WXQ3", "label": "LINC01599", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q9Y5K6", "label": "CD2AP", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "P45844", "label": "ABCG1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q5T9A4", "label": "ATAD3B", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q9H305", "label": "CDIP1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "P56730", "label": "PRSS12", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q8N8I0", "label": "SAMD12", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q9P0J7", "label": "KCMF1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "nan", "label": "nan", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q32NC0", "label": "C18orf21", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q99758", "label": "ABCA3", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q6MZT1", "label": "RGS7BP", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q8TAD7", "label": "OCC1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q9P2Q2", "label": "FRMD4A", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q8IX21", "label": "SLF2", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q8IU99", "label": "CALHM1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "A6NDL8", "label": "OR6C68", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q05952", "label": "TNP2", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q8WYJ6", "label": "SEPTIN1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q9NY72", "label": "SCN3B", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q8NF91", "label": "SYNE1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q9UH36", "label": "SRRD", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q14746", "label": "COG2", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q92784", "label": "DPF3", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "P30084", "label": "ECHS1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q96JK9", "label": "MAML3", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q30KP8", "label": "DEFB136", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q9BTX1", "label": "NDC1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "P56373", "label": "P2RX3", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q08708", "label": "CD300C", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "P68431", "label": "H3C1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "P50876", "label": "RNF144A", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q6IQ49", "label": "SDE2", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q7Z553", "label": "MDGA2", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "P47881", "label": "OR3A1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q9Y657", "label": "SPIN1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q96GR4", "label": "ZDHHC12", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q8TDN7", "label": "ACER1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q9H0E7", "label": "USP44", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "A0A1B0GX68", "label": "TRBV2", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q13046", "label": "PSG7", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "O60609", "label": "GFRA3", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q99578", "label": "RIT2", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q14444", "label": "CAPRIN1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "O60232", "label": "ZNRD2", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "P0DPH7", "label": "TUBA3C", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q99814", "label": "EPAS1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "O43155", "label": "FLRT2", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "P0DSE1", "label": "TRA", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "P16949", "label": "STMN1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q9NYL9", "label": "TMOD3", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q96LW1", "label": "ZNF354B", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q96S79", "label": "RASL10B", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q8NH21", "label": "OR4F5", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q96R08", "label": "OR5B12", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "P82251", "label": "SLC7A9", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "O75556", "label": "SCGB2A1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "O43159", "label": "RRP8", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "P0C0L5", "label": "C4B", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q96AG3", "label": "SLC25A46", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q96CH1", "label": "GPR146", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "P63173", "label": "RPL38", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "P49189", "label": "ALDH9A1", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q9UG22", "label": "GIMAP2", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q9UQP3", "label": "TNN", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "P42575", "label": "CASP2", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q96FQ6", "label": "S100A16", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q9Y5G7", "label": "PCDHGA6", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "O60547", "label": "GMDS", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "P63135", "label": "ERVK-7", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q92824", "label": "PCSK5", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "P04844", "label": "RPN2", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q9P1F3", "label": "ABRACL", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q5SSJ5", "label": "HP1BP3", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "P07357", "label": "C8A", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q8IZM8", "label": "ZNF654", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q16613", "label": "AANAT", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q86UV7", "label": "TRIM73", "shape": "dot", "size": 10},
+    {"color": "#FF0000", "id": "Q5T2N8", "label": "ATAD3C", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q86VW0", "label": "SESTD1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9GZY8-5", "label": "ID: Q9GZY8-5", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P17482", "label": "HOXB9", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P12314", "label": "FCGR1A", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q63635", "label": "ID: Q63635", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P50402", "label": "EMD", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O76064", "label": "RNF8", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q6ZPD8", "label": "DGAT2L6", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q13322-4", "label": "ID: Q13322-4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O14925", "label": "TIMM23", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8NHV1", "label": "GIMAP7", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O14880", "label": "MGST3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q12837", "label": "POU4F2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96GM1", "label": "PLPPR2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q6GQQ9", "label": "OTUD7B", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P42575-1", "label": "ID: P42575-1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q3SY46", "label": "KRTAP13-3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9H172", "label": "ABCG4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8WXX5", "label": "DNAJC9", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96L08", "label": "SUSD3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q01453", "label": "PMP22", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NUQ2", "label": "AGPAT5", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q00013", "label": "MPP1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9UHP7-3", "label": "ID: Q9UHP7-3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O43561-2", "label": "ID: O43561-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BWF3-1", "label": "ID: Q9BWF3-1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q14973", "label": "SLC10A1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q6PI78", "label": "TMEM65", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P78329", "label": "CYP4F2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P0DN84", "label": "STRIT1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NZ43", "label": "USE1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q01959", "label": "SLC6A3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q13257", "label": "MAD2L1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8NF91-11", "label": "ID: Q8NF91-11", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q6TCH4", "label": "PAQR6", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NQQ7-3", "label": "ID: Q9NQQ7-3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P23276", "label": "KEL", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96AA3", "label": "RFT1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BUN8", "label": "DERL1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q13520", "label": "AQP6", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q5T7V8", "label": "GORAB", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96GG9", "label": "DCUN1D1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8N2U9", "label": "SLC66A2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q15645", "label": "TRIP13", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q68G75", "label": "LEMD1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q15323", "label": "KRT31", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8IVP5", "label": "FUNDC1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P60410", "label": "KRTAP10-8", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "A8MW92", "label": "PHF20L1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8IUC1", "label": "KRTAP11-1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q5TCZ1", "label": "SH3PXD2A", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9Y371", "label": "SH3GLB1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q08117-2", "label": "ID: Q08117-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96EQ0", "label": "SGTB", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q5BJH2-2", "label": "ID: Q5BJH2-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9Y468", "label": "L3MBTL1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96JA4", "label": "MS4A14", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8R5C8", "label": "ID: Q8R5C8", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9H8Y8", "label": "GORASP2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P00519", "label": "ABL1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96F15", "label": "GIMAP5", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q15836", "label": "VAMP3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9ULX6", "label": "AKAP8L", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P15151", "label": "PVR", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96HE8", "label": "TMEM80", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8N720", "label": "ZNF655", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O60636", "label": "TSPAN2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9UKR5", "label": "ERG28", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q562F6", "label": "SGO2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q99549", "label": "MPHOSPH8", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q5T5A8", "label": "LCE3C", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q6ICL7", "label": "SLC35E4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P27540", "label": "ARNT", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96PS8", "label": "AQP10", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q13277", "label": "STX3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8NDZ2", "label": "SIMC1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BTX3", "label": "TMEM208", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P09467", "label": "FBP1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8WV19", "label": "SFT2D1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q69YG0", "label": "TMEM42", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9UHD9", "label": "UBQLN2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O43829", "label": "ZBTB14", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BT40", "label": "INPP5K", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9GZT9", "label": "EGLN1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P04233-2", "label": "ID: P04233-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P40818", "label": "USP8", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NRI5", "label": "DISC1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P26371", "label": "KRTAP5-9", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P78371", "label": "CCT2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q68D86", "label": "CCDC102B", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P11215", "label": "ITGAM", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96GD4", "label": "AURKB", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9H5K3", "label": "POMK", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "J3KQ12", "label": "ID: J3KQ12", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q7Z5P4", "label": "HSD17B13", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P07339", "label": "CTSD", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P49736", "label": "MCM2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P42858", "label": "HTT", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q92520", "label": "FAM3C", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P55899", "label": "FCGRT", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P49682", "label": "CXCR3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96G79", "label": "SLC35A4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P27105", "label": "STOM", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8TB24", "label": "RIN3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q14142", "label": "TRIM14", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O43463", "label": "SUV39H1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P59991", "label": "KRTAP12-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q5TA81", "label": "LCE2C", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96CS7", "label": "PLEKHB2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P0DPK4", "label": "NOTCH2NLC", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P78560", "label": "CRADD", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8N386", "label": "LRRC25", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P68036", "label": "UBE2L3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O00187", "label": "MASP2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8NHP8", "label": "PLBD2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P04626", "label": "ERBB2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q5SR56", "label": "MFSD14B", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P32242", "label": "OTX1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96IW7", "label": "SEC22A", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9H2C2", "label": "ARV1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P30273", "label": "FCER1G", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q5JR59", "label": "MTUS2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9Z0S6", "label": "ID: Q9Z0S6", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96KR6", "label": "FAM210B", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P35609", "label": "ACTN2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NRQ5", "label": "SMCO4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8NFT6-2", "label": "ID: Q8NFT6-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q7Z3S9", "label": "NOTCH2NLA", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NVC3", "label": "SLC38A7", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q14318", "label": "FKBP8", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P81534", "label": "DEFB103A", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O75400-2", "label": "ID: O75400-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8TDV0", "label": "GPR151", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P22732", "label": "SLC2A5", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q4LDR2", "label": "CTXN3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "B2RUZ4", "label": "SMIM1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9UER7-1", "label": "ID: Q9UER7-1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O75164", "label": "KDM4A", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P62993", "label": "GRB2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P62136", "label": "PPP1CA", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9UPZ6", "label": "THSD7A", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9HCJ2", "label": "LRRC4C", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NWD8", "label": "TMEM248", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8WYA1-3", "label": "ID: Q8WYA1-3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8IWU4", "label": "SLC30A8", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q76N32-2", "label": "ID: Q76N32-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q12983", "label": "BNIP3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q12981", "label": "BNIP1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O14503", "label": "BHLHE40", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P62805", "label": "H4C1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NUH8", "label": "TMEM14B", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9HD20-3", "label": "ID: Q9HD20-3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q92570", "label": "NR4A3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9HCY8", "label": "S100A14", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P54252", "label": "ATXN3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q6ZVE7", "label": "GOLT1A", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P29122", "label": "PCSK6", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O95125", "label": "ZNF202", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P38991", "label": "ID: P38991", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q4VCS5-2", "label": "ID: Q4VCS5-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9Y5U4", "label": "INSIG2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q53FV1", "label": "ORMDL2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "G2XKQ0", "label": "SUMO1P1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q07837", "label": "SLC3A1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BRK0", "label": "REEP2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P61964", "label": "WDR5", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q04941", "label": "PLP2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q7Z417", "label": "NUFIP2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "A8MV65-2", "label": "ID: A8MV65-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P30825", "label": "SLC7A1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P49368", "label": "CCT3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P32942", "label": "ICAM3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q6FHY5", "label": "ID: Q6FHY5", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9UH03", "label": "SEPTIN3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9P0S3", "label": "ORMDL1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9UNK0", "label": "STX8", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O95153", "label": "TSPOAP1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q5JX71", "label": "FAM209A", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P49321", "label": "NASP", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O43281-2", "label": "ID: O43281-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BQI6", "label": "SLF1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8N5X7-2", "label": "ID: Q8N5X7-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96CE8", "label": "TM4SF18", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P10721", "label": "KIT", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9Y680", "label": "FKBP7", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P06729", "label": "CD2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NRZ5", "label": "AGPAT4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P51946", "label": "CCNH", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BXJ8", "label": "TMEM120A", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q5S007", "label": "LRRK2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q6ZUI0", "label": "TPRG1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O43609", "label": "SPRY1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q13191", "label": "CBLB", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q6ZT21", "label": "TMPPE", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O95159", "label": "ZFPL1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O95363", "label": "FARS2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q0VD86", "label": "INCA1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P28799", "label": "GRN", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BUZ4", "label": "TRAF4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "A5D8V6", "label": "VPS37C", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BU79", "label": "TMEM243", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96D05-2", "label": "ID: Q96D05-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9Y282", "label": "ERGIC3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9UJV3-2", "label": "ID: Q9UJV3-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96SB8", "label": "SMC6", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8TC99", "label": "FNDC8", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9Y6G1", "label": "TMEM14A", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P27449", "label": "ATP6V0C", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BYR7", "label": "KRTAP3-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P55061", "label": "TMBIM6", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P54253", "label": "ATXN1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q13287", "label": "NMI", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "A2BDD9", "label": "ID: A2BDD9", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P42227", "label": "ID: P42227", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q92997", "label": "DVL3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q14802-3", "label": "ID: Q14802-3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O15529", "label": "GPR42", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P56557", "label": "TMEM50B", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O75716", "label": "STK16", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9Y3D6", "label": "FIS1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P60411", "label": "KRTAP10-9", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P04908", "label": "H2AC4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q14108", "label": "SCARB2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q7Z3T8", "label": "ZFYVE16", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P23763-3", "label": "ID: P23763-3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O75971", "label": "SNAPC5", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8N2M4", "label": "TMEM86A", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P49639", "label": "HOXA1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q969L2", "label": "MAL2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8WW24", "label": "TEKT4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8TE68", "label": "EPS8L1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9HC98-4", "label": "ID: Q9HC98-4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q02930-3", "label": "ID: Q02930-3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O43889-2", "label": "ID: O43889-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P49810", "label": "PSEN2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P52815", "label": "MRPL12", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8WUP2", "label": "FBLIM1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P46940", "label": "IQGAP1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NV12", "label": "TMEM140", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q13113", "label": "PDZK1IP1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "A0A0S2Z5W9", "label": "ID: A0A0S2Z5W9", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q15848", "label": "ADIPOQ", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q6ICB0", "label": "DESI1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P26951", "label": "IL3RA", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O96000", "label": "NDUFB10", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P54652", "label": "HSPA2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O95292", "label": "VAPB", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NVA2", "label": "SEPTIN11", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BZJ8", "label": "GPR61", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q3LHN2", "label": "KRTAP19-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96RU7", "label": "TRIB3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P25554", "label": "ID: P25554", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q99726", "label": "SLC30A3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9Y2K6", "label": "USP20", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q5JR59-3", "label": "ID: Q5JR59-3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q3MIN7", "label": "RGL3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BYR9", "label": "KRTAP2-4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O43741", "label": "PRKAB2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P49321-2", "label": "ID: P49321-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96DC9", "label": "OTUB2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NRX6", "label": "TMEM167B", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P14618-1", "label": "ID: P14618-1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O75928-2", "label": "ID: O75928-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q92624", "label": "APPBP2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q99816", "label": "TSG101", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "A8MQ03", "label": "CYSRT1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P61244", "label": "MAX", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O60573", "label": "EIF4E2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9H0E2", "label": "TOLLIP", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O60260-5", "label": "ID: O60260-5", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9Y228", "label": "TRAF3IP3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9P287", "label": "BCCIP", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8TED1", "label": "GPX8", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q13323", "label": "BIK", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BVX2", "label": "TMEM106C", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NRQ2", "label": "PLSCR4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q5T752", "label": "LCE1D", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P50570-2", "label": "ID: P50570-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O43765", "label": "SGTA", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8IWZ5", "label": "TRIM42", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O95070", "label": "YIF1A", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P43628", "label": "KIR2DL3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q6NSM0", "label": "ID: Q6NSM0", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8WWP7", "label": "GIMAP1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P83916", "label": "CBX1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q6UY14-3", "label": "ID: Q6UY14-3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P59910", "label": "DNAJB13", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P49768-2", "label": "ID: P49768-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O00327-8", "label": "ID: O00327-8", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8NBQ5", "label": "HSD17B11", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P01023", "label": "A2M", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q99832", "label": "CCT7", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P51148", "label": "RAB5C", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q7JXA8", "label": "ID: Q7JXA8", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96JQ5", "label": "MS4A4A", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q92608", "label": "DOCK2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P60228", "label": "EIF3E", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9Y5Z9", "label": "UBIAD1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q08379", "label": "GOLGA2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96EW2", "label": "HSPBAP1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BVI0", "label": "PHF20", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9Y232", "label": "CDYL", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P13473-2", "label": "ID: P13473-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9P0N8", "label": "MARCHF2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q4KMG9", "label": "TMEM52B", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8IYM1", "label": "SEPTIN12", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q69Z37", "label": "ID: Q69Z37", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O43559", "label": "FRS3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9H2L4", "label": "TMEM60", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P63027", "label": "VAMP2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9HBV2", "label": "SPACA1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "A5PKU2", "label": "ID: A5PKU2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P58418", "label": "CLRN1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q5T754", "label": "LCE1F", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9H9E3", "label": "COG4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8TBE3", "label": "FNDC9", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9UJ14", "label": "GGT7", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P04792", "label": "HSPB1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "V9HW96", "label": "ID: V9HW96", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9Y250", "label": "LZTS1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O95429", "label": "BAG4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P45973", "label": "CBX5", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8WZA2", "label": "RAPGEF4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q5K651", "label": "SAMD9", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96HA8", "label": "NTAQ1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8WW18", "label": "C17orf50", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q03164", "label": "KMT2A", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q7KZS0", "label": "ID: Q7KZS0", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q86WB7-2", "label": "ID: Q86WB7-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q02161-2", "label": "ID: Q02161-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O75031", "label": "HSF2BP", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P60409", "label": "KRTAP10-7", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P37840", "label": "SNCA", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96EB6", "label": "SIRT1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8WW34-2", "label": "ID: Q8WW34-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9P0L0", "label": "VAPA", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8IVP9", "label": "ZNF547", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q86T13", "label": "CLEC14A", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P08047", "label": "SP1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8TDT2", "label": "GPR152", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O76011", "label": "KRT34", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P02766", "label": "TTR", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BXK5", "label": "BCL2L13", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O95214", "label": "LEPROTL1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O43918", "label": "AIRE", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q13185", "label": "CBX3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P48165", "label": "GJA8", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "V9HW37", "label": "ID: V9HW37", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q12824", "label": "SMARCB1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P61020", "label": "RAB5B", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O00767", "label": "SCD", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8N6R1", "label": "SERP2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P19397", "label": "CD53", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NYZ1", "label": "TVP23B", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9H2H9", "label": "SLC38A1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O43752", "label": "STX6", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BWM7", "label": "SFXN3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9GZT8", "label": "NIF3L1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9H6H4", "label": "REEP4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9UJ78-2", "label": "ID: Q9UJ78-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q6PL45-2", "label": "ID: Q6PL45-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P63104", "label": "YWHAZ", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q7KYR7-4", "label": "ID: Q7KYR7-4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P15941-11", "label": "ID: P15941-11", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8TD46-4", "label": "ID: Q8TD46-4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8TAV4", "label": "STOML3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q13643", "label": "FHL3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9Y2J4", "label": "AMOTL2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q12888", "label": "TP53BP1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P0CG47", "label": "UBB", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O00560", "label": "SDCBP", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BYR8", "label": "KRTAP3-1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q07065", "label": "CKAP4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9UBY5", "label": "LPAR3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q3KNW5", "label": "SLC10A6", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8IYF3", "label": "TEX11", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q5J8X5", "label": "MS4A13", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NZG7", "label": "NINJ2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BQ66", "label": "KRTAP4-12", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q6P5X5", "label": "C22orf39", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9UNL4", "label": "ING4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q13571", "label": "LAPTM5", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P38484", "label": "IFNGR2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96GQ5", "label": "RUSF1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9UL26", "label": "RAB22A", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8WTS6", "label": "SETD7", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NVL1-2", "label": "ID: Q9NVL1-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q99719", "label": "SEPTIN5", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P25786", "label": "PSMA1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O95208-2", "label": "ID: O95208-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q15025", "label": "TNIP1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9Y3C5", "label": "RNF11", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P46527", "label": "CDKN1B", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q13283", "label": "G3BP1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O76024", "label": "WFS1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96NT3-2", "label": "ID: Q96NT3-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P45984", "label": "MAPK9", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P0CG48", "label": "UBC", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q86YR5-3", "label": "ID: Q86YR5-3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P08581", "label": "MET", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NR31", "label": "SAR1A", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96D03", "label": "DDIT4L", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P40763", "label": "STAT3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q3ZAQ7", "label": "VMA21", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O43448", "label": "KCNAB3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96RK4", "label": "BBS4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NTJ5", "label": "SACM1L", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q5T4W7", "label": "ARTN", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P41208", "label": "CETN2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q70EL1-9", "label": "ID: Q70EL1-9", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q6H9L7", "label": "ISM2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96DU3", "label": "SLAMF6", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8N205-2", "label": "ID: Q8N205-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96EG3", "label": "ZNF837", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "A8K4G0", "label": "CD300LB", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q2M2E3", "label": "ODF4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9UHI5", "label": "SLC7A8", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O94901", "label": "SUN1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P06241", "label": "FYN", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8WV28", "label": "BLNK", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8N9N5", "label": "BANP", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BZW4", "label": "TM6SF2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8IX15-3", "label": "ID: Q8IX15-3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P46531", "label": "NOTCH1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BYE3", "label": "LCE3D", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9P0L9", "label": "PKD2L1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8WUM4", "label": "PDCD6IP", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96ES7", "label": "SGF29", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q07627", "label": "KRTAP1-1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P05067", "label": "APP", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9H9B4", "label": "SFXN1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P60328", "label": "KRTAP12-3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q86W74-2", "label": "ID: Q86W74-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O76003", "label": "GLRX3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P78317", "label": "RNF4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NWS0", "label": "PIH1D1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q99750", "label": "MDFI", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8N4V1", "label": "MMGT1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P48730-2", "label": "ID: P48730-2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9Y5U9", "label": "IER3IP1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9UH99", "label": "SUN2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8IY18", "label": "SMC5", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NUL5-4", "label": "ID: Q9NUL5-4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8IUC2", "label": "KRTAP8-1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q14141", "label": "SEPTIN6", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96B97", "label": "SH3KBP1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q6N075", "label": "MFSD5", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P20339", "label": "RAB5A", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BZS1", "label": "FOXP3", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P48643", "label": "CCT5", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8TBB1", "label": "LNX1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O43315", "label": "AQP9", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q5VUG0", "label": "SFMBT2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P49901", "label": "SMCP", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9BSR8", "label": "YIPF4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "A0PK00", "label": "TMEM120B", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O43557", "label": "TNFSF14", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O95470", "label": "SGPL1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9Q2G4", "label": "ID: Q9Q2G4", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9UMX0", "label": "UBQLN1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q99IB8", "label": "ID: Q99IB8", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q96PV6", "label": "LENG8", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P50222", "label": "MEOX2", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "O43933", "label": "PEX1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q9NRD5", "label": "PICK1", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "P22681", "label": "CBL", "shape": "dot", "size": 10},
+    {"color": "#97c2fc", "id": "Q8N6U8", "label": "GPR161", "shape": "dot", "size": 10}
+]);
+        edges = new vis.DataSet([
+   {"from": "P45844", "to": "Q9Y371", "width": 1},
+   {"from": "Q6H9L7", "to": "Q9NY72", "width": 1},
+   {"from": "Q13323", "to": "Q8N6F1", "width": 1},
+   {"from": "J3KQ12", "to": "Q8N6F1", "width": 1},
+   {"from": "Q5BJH2-2", "to": "Q9NY72", "width": 1},
+   {"from": "P52815", "to": "Q8WYJ6", "width": 1},
+   {"from": "Q5JR59-3", "to": "Q8TEC5", "width": 1},
+   {"from": "P04844", "to": "Q9H5K3", "width": 1},
+   {"from": "O60232", "to": "Q7KZS0", "width": 1},
+   {"from": "P50876", "to": "Q96IW7", "width": 1},
+   {"from": "O43159", "to": "Q9NRD5", "width": 1},
+   {"from": "Q8N2M4", "to": "Q9NY72", "width": 1},
+   {"from": "Q96AG3", "to": "Q9UHI5", "width": 1},
+   {"from": "Q9NY72", "to": "Q9P0N8", "width": 1},
+   {"from": "O00767", "to": "Q9NY72", "width": 1},
+   {"from": "Q8N6F1", "to": "Q8TBE3", "width": 1},
+   {"from": "Q99814", "to": "Q9Y2K6", "width": 1},
+   {"from": "P25554", "to": "P68431", "width": 1},
+   {"from": "Q8IVP9", "to": "Q92824", "width": 1},
+   {"from": "P60328", "to": "Q05952", "width": 1},
+   {"from": "P68431", "to": "Q99549", "width": 1},
+   {"from": "Q9NRQ5", "to": "Q9NY72", "width": 1},
+   {"from": "O94901", "to": "Q8NF91", "width": 1},
+   {"from": "P22732", "to": "Q9NY72", "width": 1},
+   {"from": "Q8WYJ6", "to": "Q99719", "width": 1},
+   {"from": "P45844", "to": "Q13520", "width": 1},
+   {"from": "O95429", "to": "P42575", "width": 1},
+   {"from": "P08047", "to": "Q99814", "width": 1},
+   {"from": "Q8NF91", "to": "Q8NF91-11", "width": 1},
+   {"from": "Q8N6F1", "to": "Q96HE8", "width": 1},
+   {"from": "Q9NY72", "to": "Q9P0S3", "width": 1},
+   {"from": "P26951", "to": "Q8N6F1", "width": 1},
+   {"from": "Q7Z5P4", "to": "Q8N6F1", "width": 1},
+   {"from": "P82251", "to": "Q07837", "width": 1},
+   {"from": "Q8WYJ6", "to": "Q9H8Y8", "width": 1},
+   {"from": "P0DPK4", "to": "Q92824", "width": 1},
+   {"from": "Q15645", "to": "Q92824", "width": 1},
+   {"from": "A5D8V6", "to": "Q8TEC5", "width": 1},
+   {"from": "Q13643", "to": "Q96AG3", "width": 1},
+   {"from": "P40818", "to": "Q99814", "width": 1},
+   {"from": "Q6ZUI0", "to": "Q9NY72", "width": 1},
+   {"from": "P62805", "to": "P68431", "width": 1},
+   {"from": "Q68G75", "to": "Q9NY72", "width": 1},
+   {"from": "Q5T5A8", "to": "Q92824", "width": 1},
+   {"from": "Q96DC9", "to": "Q9H305", "width": 1},
+   {"from": "Q4VCS5-2", "to": "Q8WYJ6", "width": 1},
+   {"from": "O60636", "to": "Q9NY72", "width": 1},
+   {"from": "Q3ZAQ7", "to": "Q96AG3", "width": 1},
+   {"from": "P04233-2", "to": "Q8N6F1", "width": 1},
+   {"from": "P50876", "to": "Q96AA3", "width": 1},
+   {"from": "Q08379", "to": "Q8TEC5", "width": 1},
+   {"from": "P48165", "to": "Q8N6F1", "width": 1},
+   {"from": "Q15075", "to": "Q63635", "width": 1},
+   {"from": "Q8N6F1", "to": "Q9Z0S6", "width": 1},
+   {"from": "Q86T13", "to": "Q8N6F1", "width": 1},
+   {"from": "Q9BWM7", "to": "Q9NY72", "width": 1},
+   {"from": "P50876", "to": "Q6ZPD8", "width": 1},
+   {"from": "Q96FQ6", "to": "Q9HCY8", "width": 1},
+   {"from": "P49901", "to": "Q92824", "width": 1},
+   {"from": "O60232", "to": "Q0VD86", "width": 1},
+   {"from": "Q15075", "to": "Q9UL26", "width": 1},
+   {"from": "P68431", "to": "Q13185", "width": 1},
+   {"from": "P42575", "to": "P42575-1", "width": 1},
+   {"from": "Q96AG3", "to": "Q9H6H4", "width": 1},
+   {"from": "Q92824", "to": "Q96RU7", "width": 1},
+   {"from": "Q99816", "to": "Q9Y5K6", "width": 1},
+   {"from": "O75400-2", "to": "P45844", "width": 1},
+   {"from": "P27105", "to": "Q8N6F1", "width": 1},
+   {"from": "Q9NVC3", "to": "Q9NY72", "width": 1},
+   {"from": "Q2M2E3", "to": "Q96AG3", "width": 1},
+   {"from": "Q6GQQ9", "to": "Q9H305", "width": 1},
+   {"from": "P04908", "to": "Q5SSJ5", "width": 1},
+   {"from": "P27449", "to": "Q9NY72", "width": 1},
+   {"from": "Q7Z5P4", "to": "Q96AG3", "width": 1},
+   {"from": "Q8N6F1", "to": "Q8TAV4", "width": 1},
+   {"from": "O60547", "to": "O60547", "width": 1},
+   {"from": "Q9BZW4", "to": "Q9NY72", "width": 1},
+   {"from": "P68431", "to": "Q9UNL4", "width": 1},
+   {"from": "Q8N8I0", "to": "Q9Y2K6", "width": 1},
+   {"from": "Q8WW34-2", "to": "Q9NY72", "width": 1},
+   {"from": "P56557", "to": "Q9NY72", "width": 1},
+   {"from": "Q5JX71", "to": "Q8N6F1", "width": 1},
+   {"from": "P32942", "to": "Q8N6F1", "width": 1},
+   {"from": "Q8IVP5", "to": "Q96AG3", "width": 1},
+   {"from": "P30084", "to": "Q5S007", "width": 1},
+   {"from": "Q8NF91", "to": "Q9NRI5", "width": 1},
+   {"from": "P30273", "to": "Q08708", "width": 1},
+   {"from": "O75716", "to": "Q92824", "width": 1},
+   {"from": "P50876", "to": "P68036", "width": 1},
+   {"from": "Q8WYJ6", "to": "Q9NRD5", "width": 1},
+   {"from": "Q13277", "to": "Q9NY72", "width": 1},
+   {"from": "P68431", "to": "Q9BVI0", "width": 1},
+   {"from": "O60260-5", "to": "P68431", "width": 1},
+   {"from": "Q15013", "to": "Q8TC99", "width": 1},
+   {"from": "P60411", "to": "Q05952", "width": 1},
+   {"from": "Q15013", "to": "Q8IX15-3", "width": 1},
+   {"from": "O76024", "to": "P68431", "width": 1},
+   {"from": "P50222", "to": "Q92824", "width": 1},
+   {"from": "Q8N6F1", "to": "Q9P0L9", "width": 1},
+   {"from": "Q9H305", "to": "Q9UHD9", "width": 1},
+   {"from": "P27540", "to": "Q99814", "width": 1},
+   {"from": "O60232", "to": "Q9Q2G4", "width": 1},
+   {"from": "Q8WYJ6", "to": "Q9UH03", "width": 1},
+   {"from": "Q8IX21", "to": "Q96SB8", "width": 1},
+   {"from": "Q92570", "to": "Q92824", "width": 1},
+   {"from": "Q01453", "to": "Q9NY72", "width": 1},
+   {"from": "O75031", "to": "Q8WYJ6", "width": 1},
+   {"from": "Q12983", "to": "Q9NY72", "width": 1},
+   {"from": "O43741", "to": "P42575", "width": 1},
+   {"from": "Q9BTX3", "to": "Q9NY72", "width": 1},
+   {"from": "Q05952", "to": "Q92624", "width": 1},
+   {"from": "O00187", "to": "P0C0L5", "width": 1},
+   {"from": "P50570-2", "to": "P68431", "width": 1},
+   {"from": "Q8N6F1", "to": "Q8TD46-4", "width": 1},
+   {"from": "O95363", "to": "Q92824", "width": 1},
+   {"from": "O00560", "to": "Q8WYJ6", "width": 1},
+   {"from": "O60232", "to": "P48643", "width": 1},
+   {"from": "Q9NY72", "to": "Q9Y6G1", "width": 1},
+   {"from": "P16949", "to": "Q86VW0", "width": 1},
+   {"from": "Q15025", "to": "Q9H305", "width": 1},
+   {"from": "P62136", "to": "Q8TEC5", "width": 1},
+   {"from": "P68431", "to": "Q9Y232", "width": 1},
+   {"from": "O14880", "to": "Q9NY72", "width": 1},
+   {"from": "P25786", "to": "Q8IX21", "width": 1},
+   {"from": "O43561-2", "to": "Q9H305", "width": 1},
+   {"from": "Q8TEC5", "to": "Q9HC98-4", "width": 1},
+   {"from": "Q13322-4", "to": "Q16613", "width": 1},
+   {"from": "Q96G79", "to": "Q9NY72", "width": 1},
+   {"from": "Q8WYJ6", "to": "Q8WYJ6", "width": 1},
+   {"from": "P49736", "to": "P68431", "width": 1},
+   {"from": "Q9BU79", "to": "Q9NY72", "width": 1},
+   {"from": "P15151", "to": "Q8N6F1", "width": 1},
+   {"from": "P07357", "to": "Q8TDT2", "width": 1},
+   {"from": "O43159", "to": "O43463", "width": 1},
+   {"from": "Q08708", "to": "Q9NRX6", "width": 1},
+   {"from": "Q8N6F1", "to": "Q9NQQ7-3", "width": 1},
+   {"from": "P46940", "to": "Q9Y5K6", "width": 1},
+   {"from": "P06241", "to": "Q9Y5K6", "width": 1},
+   {"from": "Q92608", "to": "Q92824", "width": 1},
+   {"from": "O60609", "to": "Q5T4W7", "width": 1},
+   {"from": "O14503", "to": "Q16613", "width": 1},
+   {"from": "P61020", "to": "Q15075", "width": 1},
+   {"from": "P49321-2", "to": "P68431", "width": 1},
+   {"from": "Q8N6F1", "to": "Q9BXK5", "width": 1},
+   {"from": "P68431", "to": "Q9Y3C5", "width": 1},
+   {"from": "P49768-2", "to": "P68431", "width": 1},
+   {"from": "Q8N205-2", "to": "Q8N6F1", "width": 1},
+   {"from": "Q92520", "to": "Q9NY72", "width": 1},
+   {"from": "Q8IUC1", "to": "Q92824", "width": 1},
+   {"from": "Q96GM1", "to": "Q9NY72", "width": 1},
+   {"from": "Q6IQ49", "to": "Q96EW2", "width": 1},
+   {"from": "O60232", "to": "O75971", "width": 1},
+   {"from": "O60232", "to": "P49368", "width": 1},
+   {"from": "P61244", "to": "Q99814", "width": 1},
+   {"from": "P58418", "to": "Q8N6F1", "width": 1},
+   {"from": "P00519", "to": "Q15464", "width": 1},
+   {"from": "Q8N2U9", "to": "Q96AG3", "width": 1},
+   {"from": "P50876", "to": "Q96EQ0", "width": 1},
+   {"from": "G2XKQ0", "to": "O60232", "width": 1},
+   {"from": "P49810", "to": "P68431", "width": 1},
+   {"from": "P68431", "to": "Q9UER7-1", "width": 1},
+   {"from": "O75164", "to": "P68431", "width": 1},
+   {"from": "Q8WUM4", "to": "Q9Y5K6", "width": 1},
+   {"from": "P07357", "to": "P30825", "width": 1},
+   {"from": "Q92824", "to": "Q9NRQ2", "width": 1},
+   {"from": "P07357", "to": "Q6ZVE7", "width": 1},
+   {"from": "A0PK00", "to": "Q9NY72", "width": 1},
+   {"from": "Q3SY46", "to": "Q92824", "width": 1},
+   {"from": "Q9UG22", "to": "Q9UG22", "width": 1},
+   {"from": "O95214", "to": "Q96AG3", "width": 1},
+   {"from": "Q6PL45-2", "to": "Q9NY72", "width": 1},
+   {"from": "P06729", "to": "Q9Y5K6", "width": 1},
+   {"from": "P68431", "to": "Q8WTS6", "width": 1},
+   {"from": "Q8N6F1", "to": "Q9UHP7-3", "width": 1},
+   {"from": "Q9Y5K6", "to": "Q9Y5K6", "width": 1},
+   {"from": "Q13191", "to": "Q9Y5K6", "width": 1},
+   {"from": "P50402", "to": "Q8NF91", "width": 1},
+   {"from": "P23763-3", "to": "Q9NY72", "width": 1},
+   {"from": "P54252", "to": "P68431", "width": 1},
+   {"from": "Q9NRZ5", "to": "Q9NY72", "width": 1},
+   {"from": "Q6UY14-3", "to": "Q92824", "width": 1},
+   {"from": "Q13571", "to": "Q8N6F1", "width": 1},
+   {"from": "O96000", "to": "P05455", "width": 1},
+   {"from": "Q13520", "to": "Q8N6F1", "width": 1},
+   {"from": "O60232", "to": "P35609", "width": 1},
+   {"from": "Q92824", "to": "Q9BUZ4", "width": 1},
+   {"from": "O43889-2", "to": "P82251", "width": 1},
+   {"from": "Q9HD20-3", "to": "Q9NY72", "width": 1},
+   {"from": "O43559", "to": "Q92824", "width": 1},
+   {"from": "Q07627", "to": "Q92824", "width": 1},
+   {"from": "P15941-11", "to": "Q8N6F1", "width": 1},
+   {"from": "P0CG48", "to": "Q9H305", "width": 1},
+   {"from": "Q9NUH8", "to": "Q9NY72", "width": 1},
+   {"from": "P68431", "to": "Q12824", "width": 1},
+   {"from": "Q8N6F1", "to": "Q8N6U8", "width": 1},
+   {"from": "Q92824", "to": "Q9BQ66", "width": 1},
+   {"from": "Q05952", "to": "Q07627", "width": 1},
+   {"from": "Q6ICB0", "to": "Q9H305", "width": 1},
+   {"from": "Q15323", "to": "Q8N6F1", "width": 1},
+   {"from": "Q8N6F1", "to": "Q9Y282", "width": 1},
+   {"from": "P42858", "to": "P68431", "width": 1},
+   {"from": "P60410", "to": "Q05952", "width": 1},
+   {"from": "Q12837", "to": "Q92824", "width": 1},
+   {"from": "Q14141", "to": "Q8WYJ6", "width": 1},
+   {"from": "P42575", "to": "P42575", "width": 1},
+   {"from": "P10721", "to": "Q15464", "width": 1},
+   {"from": "O95470", "to": "Q8N6F1", "width": 1},
+   {"from": "Q5TCZ1", "to": "Q9H013", "width": 1},
+   {"from": "Q5VUG0", "to": "Q8IX21", "width": 1},
+   {"from": "P05455", "to": "Q8WZA2", "width": 1},
+   {"from": "P14618-1", "to": "P68431", "width": 1},
+   {"from": "Q6NSM0", "to": "Q92824", "width": 1},
+   {"from": "Q8NFT6-2", "to": "Q92824", "width": 1},
+   {"from": "O43281-2", "to": "Q8TEC5", "width": 1},
+   {"from": "Q15836", "to": "Q9NY72", "width": 1},
+   {"from": "O60573", "to": "Q99814", "width": 1},
+   {"from": "A8MW92", "to": "P68431", "width": 1},
+   {"from": "P60411", "to": "Q92824", "width": 1},
+   {"from": "P11215", "to": "Q9NY72", "width": 1},
+   {"from": "Q05952", "to": "Q99750", "width": 1},
+   {"from": "O95214", "to": "Q08708", "width": 1},
+   {"from": "Q8WYJ6", "to": "Q9NWS0", "width": 1},
+   {"from": "Q15848", "to": "Q9NY72", "width": 1},
+   {"from": "O60232", "to": "V9HW96", "width": 1},
+   {"from": "P19397", "to": "Q8N6F1", "width": 1},
+   {"from": "P63027", "to": "Q9NY72", "width": 1},
+   {"from": "Q15013", "to": "Q15645", "width": 1},
+   {"from": "Q14318", "to": "Q9NY72", "width": 1},
+   {"from": "Q9NY72", "to": "Q9P0L0", "width": 1},
+   {"from": "Q00013", "to": "Q8TDN7", "width": 1},
+   {"from": "P30084", "to": "P40763", "width": 1},
+   {"from": "Q9NY72", "to": "Q9NZ43", "width": 1},
+   {"from": "P49321", "to": "P68431", "width": 1},
+   {"from": "P43628", "to": "Q8N6F1", "width": 1},
+   {"from": "Q8N720", "to": "Q92824", "width": 1},
+   {"from": "P59991", "to": "Q92824", "width": 1},
+   {"from": "P68431", "to": "Q9Y468", "width": 1},
+   {"from": "Q9NV12", "to": "Q9NY72", "width": 1},
+   {"from": "Q96PS8", "to": "Q9NY72", "width": 1},
+   {"from": "Q8WYJ6", "to": "Q9GZT8", "width": 1},
+   {"from": "Q8N6F1", "to": "Q9NWD8", "width": 1},
+   {"from": "Q8N6F1", "to": "Q8TED1", "width": 1},
+   {"from": "P30825", "to": "P50876", "width": 1},
+   {"from": "Q14802-3", "to": "Q9NY72", "width": 1},
+   {"from": "Q6PI78", "to": "Q9NY72", "width": 1},
+   {"from": "O43159", "to": "Q6FHY5", "width": 1},
+   {"from": "Q8TEC5", "to": "Q9Y2J4", "width": 1},
+   {"from": "P68431", "to": "Q12888", "width": 1},
+   {"from": "P42858", "to": "Q9H553", "width": 1},
+   {"from": "Q96AG3", "to": "Q9BRK0", "width": 1},
+   {"from": "O60232", "to": "Q9UJ78-2", "width": 1},
+   {"from": "Q8N6F1", "to": "Q9BVX2", "width": 1},
+   {"from": "Q14142", "to": "Q8IX21", "width": 1},
+   {"from": "Q16613", "to": "Q99750", "width": 1},
+   {"from": "Q8WYJ6", "to": "Q96D03", "width": 1},
+   {"from": "Q8N6F1", "to": "Q9GZY8-5", "width": 1},
+   {"from": "Q8N6F1", "to": "Q9NR31", "width": 1},
+   {"from": "Q8N6F1", "to": "Q9Y680", "width": 1},
+   {"from": "P38991", "to": "P68431", "width": 1},
+   {"from": "P68431", "to": "Q7JXA8", "width": 1},
+   {"from": "P48730-2", "to": "Q8IU99", "width": 1},
+   {"from": "Q86W74-2", "to": "Q9NY72", "width": 1},
+   {"from": "P05455", "to": "Q99IB8", "width": 1},
+   {"from": "P50876", "to": "Q07065", "width": 1},
+   {"from": "Q14746", "to": "Q96PV6", "width": 1},
+   {"from": "P32242", "to": "Q92824", "width": 1},
+   {"from": "O60232", "to": "Q9Y228", "width": 1},
+   {"from": "Q14746", "to": "Q76N32-2", "width": 1},
+   {"from": "Q6N075", "to": "Q9NY72", "width": 1},
+   {"from": "Q92824", "to": "Q99750", "width": 1},
+   {"from": "Q8N6F1", "to": "Q96JQ5", "width": 1},
+   {"from": "Q70EL1-9", "to": "Q92824", "width": 1},
+   {"from": "Q9BXJ8", "to": "Q9NY72", "width": 1},
+   {"from": "Q9NY72", "to": "Q9Y3D6", "width": 1},
+   {"from": "P59910", "to": "Q8WYJ6", "width": 1},
+   {"from": "Q92824", "to": "Q9NVL1-2", "width": 1},
+   {"from": "Q68D86", "to": "Q8TEC5", "width": 1},
+   {"from": "P07339", "to": "P68431", "width": 1},
+   {"from": "P68431", "to": "Q9Y371", "width": 1},
+   {"from": "Q8NF91", "to": "Q9UH99", "width": 1},
+   {"from": "Q8TDV0", "to": "Q9NY72", "width": 1},
+   {"from": "O43889-2", "to": "Q8N6F1", "width": 1},
+   {"from": "Q8WYJ6", "to": "Q9NVA2", "width": 1},
+   {"from": "Q12981", "to": "Q9NY72", "width": 1},
+   {"from": "P50876", "to": "Q6N075", "width": 1},
+   {"from": "Q8WW24", "to": "Q92824", "width": 1},
+   {"from": "P04792", "to": "Q9Y657", "width": 1},
+   {"from": "O43159", "to": "Q96EB6", "width": 1},
+   {"from": "O95208-2", "to": "Q9H305", "width": 1},
+   {"from": "P16949", "to": "P46527", "width": 1},
+   {"from": "Q9H2C2", "to": "Q9NY72", "width": 1},
+   {"from": "Q14746", "to": "Q5JR59", "width": 1},
+   {"from": "Q08117-2", "to": "Q92824", "width": 1},
+   {"from": "O60232", "to": "P78371", "width": 1},
+   {"from": "Q9NY72", "to": "Q9NYZ1", "width": 1},
+   {"from": "Q14108", "to": "Q8N6F1", "width": 1},
+   {"from": "Q13113", "to": "Q8N6F1", "width": 1},
+   {"from": "P68431", "to": "Q96ES7", "width": 1},
+   {"from": "Q9NY72", "to": "Q9NZG7", "width": 1},
+   {"from": "Q15013", "to": "Q9BT40", "width": 1},
+   {"from": "Q9NY72", "to": "Q9UNK0", "width": 1},
+   {"from": "Q3LHN2", "to": "Q92824", "width": 1},
+   {"from": "Q14973", "to": "Q8N6F1", "width": 1},
+   {"from": "Q8IX21", "to": "Q8IY18", "width": 1},
+   {"from": "Q7Z3S9", "to": "Q92824", "width": 1},
+   {"from": "P45973", "to": "P68431", "width": 1},
+   {"from": "Q8IX21", "to": "Q9BQI6", "width": 1},
+   {"from": "Q15075", "to": "Q5K651", "width": 1},
+   {"from": "P12314", "to": "Q8N6F1", "width": 1},
+   {"from": "Q96IW7", "to": "Q9NY72", "width": 1},
+   {"from": "O95214", "to": "Q9NY72", "width": 1},
+   {"from": "P50222", "to": "Q5SSJ5", "width": 1},
+   {"from": "P30825", "to": "Q9NY72", "width": 1},
+   {"from": "Q05952", "to": "Q9BYR9", "width": 1},
+   {"from": "Q96GG9", "to": "Q9H305", "width": 1},
+   {"from": "P13473-2", "to": "P45844", "width": 1},
+   {"from": "P22681", "to": "Q9Y5K6", "width": 1},
+   {"from": "P38484", "to": "Q8N6F1", "width": 1},
+   {"from": "P63173", "to": "Q9P287", "width": 1},
+   {"from": "Q9NY72", "to": "Q9UKR5", "width": 1},
+   {"from": "Q8N6F1", "to": "Q96JA4", "width": 1},
+   {"from": "Q8IYM1", "to": "Q8WYJ6", "width": 1},
+   {"from": "Q14746", "to": "Q9Y250", "width": 1},
+   {"from": "P51148", "to": "Q15075", "width": 1},
+   {"from": "Q8WV28", "to": "Q9Y5K6", "width": 1},
+   {"from": "Q92824", "to": "Q9NUL5-4", "width": 1},
+   {"from": "P60410", "to": "Q92824", "width": 1},
+   {"from": "Q9NY72", "to": "Q9UPZ6", "width": 1},
+   {"from": "Q8NBQ5", "to": "Q96AG3", "width": 1},
+   {"from": "Q16613", "to": "Q8IUC2", "width": 1},
+   {"from": "P17482", "to": "Q92824", "width": 1},
+   {"from": "O43557", "to": "Q8N6F1", "width": 1},
+   {"from": "P09467", "to": "Q99814", "width": 1},
+   {"from": "Q08708", "to": "Q8TDV0", "width": 1},
+   {"from": "P05067", "to": "Q8IU99", "width": 1},
+   {"from": "Q8N6F1", "to": "Q96DU3", "width": 1},
+   {"from": "P30084", "to": "P42227", "width": 1},
+   {"from": "A8K4G0", "to": "Q08708", "width": 1},
+   {"from": "Q9H2L4", "to": "Q9NY72", "width": 1},
+   {"from": "P45844", "to": "Q9H172", "width": 1},
+   {"from": "P68431", "to": "Q03164", "width": 1},
+   {"from": "P55899", "to": "Q8N6F1", "width": 1},
+   {"from": "O76003", "to": "Q92824", "width": 1},
+   {"from": "P08581", "to": "Q15464", "width": 1},
+   {"from": "P49639", "to": "Q92824", "width": 1},
+   {"from": "Q9BUN8", "to": "Q9NY72", "width": 1},
+   {"from": "Q0VD86", "to": "Q92824", "width": 1},
+   {"from": "Q96B97", "to": "Q9Y5K6", "width": 1},
+   {"from": "O95125", "to": "Q15013", "width": 1},
+   {"from": "Q5J8X5", "to": "Q9NY72", "width": 1},
+   {"from": "Q9H9B4", "to": "Q9NY72", "width": 1},
+   {"from": "Q8TEC5", "to": "Q9ULX6", "width": 1},
+   {"from": "Q14973", "to": "Q96AG3", "width": 1},
+   {"from": "Q8WYJ6", "to": "Q9UJV3-2", "width": 1},
+   {"from": "Q9BZS1", "to": "Q9H0E7", "width": 1},
+   {"from": "P81534", "to": "Q9NY72", "width": 1},
+   {"from": "P05455", "to": "P42858", "width": 1},
+   {"from": "Q8WV19", "to": "Q9NY72", "width": 1},
+   {"from": "P42858", "to": "Q9UG22", "width": 1},
+   {"from": "P07357", "to": "Q8N4V1", "width": 1},
+   {"from": "Q8N6R1", "to": "Q9NY72", "width": 1},
+   {"from": "Q04941", "to": "Q9NY72", "width": 1},
+   {"from": "Q8IWZ5", "to": "Q92824", "width": 1},
+   {"from": "Q8N386", "to": "Q8N6F1", "width": 1},
+   {"from": "Q08708", "to": "Q86WB7-2", "width": 1},
+   {"from": "P45984", "to": "Q96S79", "width": 1},
+   {"from": "O15529", "to": "Q08708", "width": 1},
+   {"from": "P02766", "to": "P68431", "width": 1},
+   {"from": "P07357", "to": "Q14973", "width": 1},
+   {"from": "Q9H305", "to": "Q9UMX0", "width": 1},
+   {"from": "Q9NY72", "to": "Q9UBY5", "width": 1},
+   {"from": "O60232", "to": "O75928-2", "width": 1},
+   {"from": "P46531", "to": "Q96JK9", "width": 1},
+   {"from": "O00327-8", "to": "Q99814", "width": 1},
+   {"from": "P54253", "to": "Q9H553", "width": 1},
+   {"from": "P0CG47", "to": "Q9H305", "width": 1},
+   {"from": "Q6FHY5", "to": "Q92824", "width": 1},
+   {"from": "P26371", "to": "Q92824", "width": 1},
+   {"from": "P50876", "to": "Q6TCH4", "width": 1},
+   {"from": "Q5T752", "to": "Q92824", "width": 1},
+   {"from": "Q9NY72", "to": "Q9Y5U4", "width": 1},
+   {"from": "P68431", "to": "Q8WXX5", "width": 1},
+   {"from": "O43933", "to": "P68431", "width": 1},
+   {"from": "A8MV65-2", "to": "Q92824", "width": 1},
+   {"from": "O95429", "to": "Q8TEC5", "width": 1},
+   {"from": "Q4LDR2", "to": "Q9NY72", "width": 1},
+   {"from": "Q15075", "to": "Q7Z3T8", "width": 1},
+   {"from": "Q9BZJ8", "to": "Q9NY72", "width": 1},
+   {"from": "P60409", "to": "Q92824", "width": 1},
+   {"from": "Q13520", "to": "Q96AG3", "width": 1},
+   {"from": "Q08708", "to": "Q96KR6", "width": 1},
+   {"from": "P01023", "to": "P68431", "width": 1},
+   {"from": "Q8N6F1", "to": "Q9HCJ2", "width": 1},
+   {"from": "O95159", "to": "Q9NY72", "width": 1},
+   {"from": "Q92824", "to": "Q9BYR8", "width": 1},
+   {"from": "Q14746", "to": "Q9H9E3", "width": 1},
+   {"from": "O60232", "to": "Q99832", "width": 1},
+   {"from": "Q96F15", "to": "Q9NY72", "width": 1},
+   {"from": "Q96GQ5", "to": "Q9NY72", "width": 1},
+   {"from": "A8MQ03", "to": "Q92824", "width": 1},
+   {"from": "O43918", "to": "P68431", "width": 1},
+   {"from": "Q5T754", "to": "Q92824", "width": 1},
+   {"from": "O43159", "to": "Q92997", "width": 1},
+   {"from": "A2BDD9", "to": "Q8WYJ6", "width": 1},
+   {"from": "P05455", "to": "P54652", "width": 1},
+   {"from": "Q8N6F1", "to": "Q96CE8", "width": 1},
+   {"from": "P13473-2", "to": "P68431", "width": 1},
+   {"from": "O14925", "to": "Q9NY72", "width": 1},
+   {"from": "P68431", "to": "Q8R5C8", "width": 1},
+   {"from": "P37840", "to": "P68431", "width": 1},
+   {"from": "Q8IWU4", "to": "Q9NY72", "width": 1},
+   {"from": "Q01959", "to": "Q99578", "width": 1},
+   {"from": "Q9NTJ5", "to": "Q9NY72", "width": 1},
+   {"from": "Q6ZT21", "to": "Q9NY72", "width": 1},
+   {"from": "Q8TE68", "to": "Q9H013", "width": 1},
+   {"from": "O60232", "to": "P51946", "width": 1},
+   {"from": "Q99726", "to": "Q9NY72", "width": 1},
+   {"from": "Q02930-3", "to": "Q92824", "width": 1},
+   {"from": "P68431", "to": "Q8WUP2", "width": 1},
+   {"from": "Q8NHV1", "to": "Q9UG22", "width": 1},
+   {"from": "Q5TA81", "to": "Q92824", "width": 1},
+   {"from": "Q8N6F1", "to": "Q9HBV2", "width": 1},
+   {"from": "O43315", "to": "Q8N6F1", "width": 1},
+   {"from": "P20339", "to": "Q15075", "width": 1},
+   {"from": "O95070", "to": "P50876", "width": 1},
+   {"from": "Q8N6F1", "to": "Q9UJ14", "width": 1},
+   {"from": "Q7KYR7-4", "to": "Q8N6F1", "width": 1},
+   {"from": "Q4KMG9", "to": "Q8N6F1", "width": 1},
+   {"from": "Q6P5X5", "to": "Q92824", "width": 1},
+   {"from": "Q99814", "to": "Q9BWF3-1", "width": 1},
+   {"from": "Q92824", "to": "Q9BYE3", "width": 1},
+   {"from": "P29122", "to": "Q92824", "width": 1},
+   {"from": "Q92824", "to": "Q96EG3", "width": 1},
+   {"from": "Q13287", "to": "Q15013", "width": 1},
+   {"from": "Q8WYJ6", "to": "Q96GD4", "width": 1},
+   {"from": "Q86YR5-3", "to": "Q8WYJ6", "width": 1},
+   {"from": "Q6ICL7", "to": "Q9NY72", "width": 1},
+   {"from": "Q8N6F1", "to": "Q96CS7", "width": 1},
+   {"from": "Q8IYF3", "to": "Q8WYJ6", "width": 1},
+   {"from": "Q8WYA1-3", "to": "Q99814", "width": 1},
+   {"from": "P0DN84", "to": "Q9NY72", "width": 1},
+   {"from": "Q8IX21", "to": "Q8NDZ2", "width": 1},
+   {"from": "Q92824", "to": "Q96NT3-2", "width": 1},
+   {"from": "Q69YG0", "to": "Q9NY72", "width": 1},
+   {"from": "Q969L2", "to": "Q9NY72", "width": 1},
+   {"from": "P61964", "to": "P68431", "width": 1},
+   {"from": "Q96RK4", "to": "Q99814", "width": 1},
+   {"from": "Q9BSR8", "to": "Q9NY72", "width": 1},
+   {"from": "P04626", "to": "Q15075", "width": 1},
+   {"from": "A5PKU2", "to": "Q9NY72", "width": 1},
+   {"from": "A8MQ03", "to": "Q8TEC5", "width": 1},
+   {"from": "Q8WW18", "to": "Q92824", "width": 1},
+   {"from": "Q99814", "to": "Q9GZT9", "width": 1},
+   {"from": "O95292", "to": "Q9NY72", "width": 1},
+   {"from": "B2RUZ4", "to": "Q9NY72", "width": 1},
+   {"from": "Q13257", "to": "Q15013", "width": 1},
+   {"from": "Q8TB24", "to": "Q9Y5K6", "width": 1},
+   {"from": "P42575", "to": "P78560", "width": 1},
+   {"from": "Q13283", "to": "Q14444", "width": 1},
+   {"from": "P41208", "to": "Q9H0E7", "width": 1},
+   {"from": "Q8N9N5", "to": "Q8TEC5", "width": 1},
+   {"from": "Q8IU99", "to": "Q8IU99", "width": 1},
+   {"from": "P28799", "to": "P68431", "width": 1},
+   {"from": "O60232", "to": "P78317", "width": 1},
+   {"from": "P78329", "to": "Q9NY72", "width": 1},
+   {"from": "Q5SR56", "to": "Q96AG3", "width": 1},
+   {"from": "Q15013", "to": "Q562F6", "width": 1},
+   {"from": "O43609", "to": "Q92824", "width": 1},
+   {"from": "Q9NUQ2", "to": "Q9NY72", "width": 1},
+   {"from": "Q53FV1", "to": "Q9NY72", "width": 1},
+   {"from": "Q15075", "to": "Q69Z37", "width": 1},
+   {"from": "Q8N6F1", "to": "Q96L08", "width": 1},
+   {"from": "P49682", "to": "Q8N6F1", "width": 1},
+   {"from": "Q7KZS0", "to": "Q8WYJ6", "width": 1},
+   {"from": "O43765", "to": "P50876", "width": 1},
+   {"from": "P60228", "to": "Q99814", "width": 1},
+   {"from": "O60232", "to": "V9HW37", "width": 1},
+   {"from": "Q9NY72", "to": "Q9Y5Z9", "width": 1},
+   {"from": "O76064", "to": "Q9NY72", "width": 1},
+   {"from": "Q5T7V8", "to": "Q8N6F1", "width": 1},
+   {"from": "Q7Z417", "to": "Q92824", "width": 1},
+   {"from": "Q9H0E2", "to": "Q9H305", "width": 1},
+   {"from": "O43752", "to": "Q9NY72", "width": 1},
+   {"from": "O76011", "to": "Q8N6F1", "width": 1},
+   {"from": "Q8NHP8", "to": "Q9NY72", "width": 1},
+   {"from": "Q8WWP7", "to": "Q9NY72", "width": 1},
+   {"from": "Q92824", "to": "Q9BYR7", "width": 1},
+   {"from": "Q02161-2", "to": "Q9NY72", "width": 1},
+   {"from": "Q8TBB1", "to": "Q8WYJ6", "width": 1},
+   {"from": "O43448", "to": "O60547", "width": 1},
+   {"from": "Q9NY72", "to": "Q9Y5U9", "width": 1},
+   {"from": "O95070", "to": "Q9NY72", "width": 1},
+   {"from": "P68431", "to": "P83916", "width": 1},
+   {"from": "P55061", "to": "Q9NY72", "width": 1},
+   {"from": "Q3KNW5", "to": "Q96AG3", "width": 1},
+   {"from": "O60547", "to": "Q96HA8", "width": 1},
+   {"from": "Q16613", "to": "Q8N5X7-2", "width": 1},
+   {"from": "P23276", "to": "Q8N6F1", "width": 1},
+   {"from": "P63104", "to": "P68431", "width": 1},
+   {"from": "Q9H2H9", "to": "Q9NY72", "width": 1},
+   {"from": "O43829", "to": "Q15013", "width": 1},
+   {"from": "Q6ZPD8", "to": "Q9NY72", "width": 1},
+   {"from": "Q96D05-2", "to": "Q9NY72", "width": 1},
+   {"from": "O95153", "to": "Q9H013", "width": 1},
+   {"from": "Q3MIN7", "to": "Q99578", "width": 1},
+   {"from": "A8MQ03", "to": "Q8N6F1", "width": 1},
+   {"from": "P62993", "to": "Q9Y5K6", "width": 1},
+   {"from": "A0A0S2Z5W9", "to": "Q8WYJ6", "width": 1},
+   {"from": "Q14746", "to": "Q5JR59-3", "width": 1}
+]);
+        nodeColors = {};
+        allNodes = nodes.get({ returnType: "Object" });
+        for (nodeId in allNodes) {
+          nodeColors[nodeId] = allNodes[nodeId].color;
+        }
+        allEdges = edges.get({ returnType: "Object" });
+        // adding nodes and edges to the graph
+        data = { nodes: nodes, edges: edges };
+
+        var options = {
+          "configure": {
+            "enabled": false
+          },
+          "edges": {
+            "color": {
+              "inherit": false
+            },
+            "smooth": {
+              "enabled": true,
+              "type": "dynamic"
+            }
+          },
+          "interaction": {
+            "dragNodes": true,
+            "hideEdgesOnDrag": false,
+            "hideNodesOnDrag": false
+          },
+          "physics": {
+            "enabled": true,
+            "barnesHut": {
+              "gravitationalConstant": -2000,
+              "centralGravity": 0.3,
+              "springLength": 95,
+              "springConstant": 0.04,
+              "damping": 0.09,
+              "avoidOverlap": 0
+            },
+            "stabilization": {
+              "enabled": true,
+              "fit": true,
+              "iterations": 1000,
+              "onlyDynamicEdges": false,
+              "updateInterval": 50
+            }
+          }
+        };
+
+        network = new vis.Network(container, data, options);
+
+        network.once("stabilizationIterationsDone", function () {
+          setTimeout(() => {
+            network.setOptions({ physics: false });
+          }, 2000); // Turns off physics 2 seconds after stabilization
+        });
+
+        // network.on("selectNode", neighbourhoodHighlight);
+
+        network.on("selectNode", function(params) {
+            var selectedNode = params.nodes[0]; // Get the selected node ID
+            if (selectedNode) {
+              neighbourhoodHighlight(params); // Keep the neighborhood highlight
+            };
+              
+              network.focus(selectedNode, {
+                scale: 1.5,  // Adjust zoom level
+                animation: {
+                  duration: 500,  // Smooth transition
+                  easingFunction: "easeInOutQuad"
+                }
+              });
+            });
+      
+
+          
+
+        network.on("stabilizationProgress", function(params) {
+                          document.getElementById('loadingBar').removeAttribute("style");
+                          var maxWidth = 496;
+                          var minWidth = 20;
+                          var widthFactor = params.iterations/params.total;
+                          var width = Math.max(minWidth,maxWidth * widthFactor);
+                          document.getElementById('bar').style.width = width + 10 + 'px';
+                          document.getElementById('text').innerHTML = Math.round(widthFactor*100) + '%';
+                      });
+                      network.once("stabilizationIterationsDone", function() {
+                          document.getElementById('text').innerHTML = '100%';
+                          document.getElementById('bar').style.width = '496px';
+                          document.getElementById('loadingBar').style.opacity = 0;
+                          // really clean the dom element
+                          setTimeout(function () {document.getElementById('loadingBar').style.display = 'none';}, 500);
+                      });
+  
+
+        return network;
+
+      }
+      drawGraph();
+    </script>
+</body>
+
+</html>
