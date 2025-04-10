@@ -1,7 +1,6 @@
 import streamlit as st
 
 from langchain_openai import OpenAIEmbeddings
-import faiss
 from langchain_community.vectorstores import FAISS
 from langchain.schema import Document
 from langchain_openai import ChatOpenAI

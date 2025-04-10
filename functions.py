@@ -3,17 +3,24 @@ import time
 import ast
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import networkx
 import numpy as np
+import os
 import plotly.graph_objects as go
 import pandas as pd
 import requests
+import re
 import io
+import itertools
+import warnings
 from openai import OpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_core.prompts import PromptTemplate
 from langchain.callbacks.streamlit import StreamlitCallbackHandler # deprecated
 from matplotlib_set_diagrams import EulerDiagram
+from pyvis.network import Network
 from rag import col_retrieval_rag
+import Visualization_Functions
 
 def authenticate():
     # placeholders variables for UI 
@@ -275,6 +282,7 @@ def build_visual_2(llm):
     )
     chain = prompt | llm
     parser_output = chain.invoke({"all_cols": all_columns})
+
     
     parser_output_content = parser_output.content.strip('"')
     parser_output_content = parser_output_content.strip('(')
@@ -305,28 +313,22 @@ def build_visual_2(llm):
     fig1.update_layout(
         title = dict(
             text = "Distribution of Genes Across Top 20 Subcellular Locations", 
-            # font = dict(family = "Arial", size = 18, weight = "bold"),
         ),
         xaxis = dict(
             title = dict(
                 text = "Subcellular Location",
-                # font = dict(family = "Arial", size = 16, color = "black", weight = "bold")
             ),
-            # tickfont=dict(family = "Arial", size = 14, color = "black", weight = "bold"),
             tickangle = 45
         ),
         yaxis = dict(
             title = dict(
                 text = "Number of Genes",
-                # font = dict(family = "Arial", size = 16, color = "black", weight = "bold")
             ),
-            # tickfont=dict(family = "Arial", size=14, color="black", weight = "bold")
         ),
         template="plotly_white",
         autosize = False,
         height = 600
     )
-
 
     # Save the figure to a BytesIO object
     img_bytes = io.BytesIO()
@@ -335,6 +337,162 @@ def build_visual_2(llm):
 
     # Store in session state
     st.session_state["most_recent_chart_selection"] = img_bytes
+
+def build_visual_3(llm):
+
+    def extract_protein_name(protein):
+        match = re.search(r"\[([A-Za-z0-9_]+)\]", protein)
+        return match.group(1) if match else protein
+
+    all_columns = list(st.session_state.merged_df.columns)
+    prompt = PromptTemplate(
+    template = """
+    - Here is a list of columns in a dataframe: {all_cols}
+    - The columns hold information relating to gene names, disease associations, biological processes, and much more.
+    - Some names contain acronyms. Try to decode these remembering that this is a biological/genetic dataset.
+    Instructions:
+                - Using the list of column names, select 4 columns.
+                - First, select the one you think is most relevant to protein interactions. It may be called something similar to interacts with. 
+                - Second, select the column that refers to gene names
+                - Third, select the column that refers to the id of the genes. It will likely be the first column
+                - Fourth, select the column that refers to nicknames or synonyms of the genes.
+                - Return the name of the columns you found for subcellular location exactly as they are titled in the dataframe. Do not add any special characters, underscores, parantheses, or quotations. 
+                - E.g. Return the column names in a tuple: (colname_1, colname_2, colname_3, colname_4)
+                - Return ONLY the column name with that formatting. Do not add any special characters or quotations. Make sure there are no space characters in any of the column names
+    """
+    )
+
+    chain = prompt | llm
+    parser_output = chain.invoke({"all_cols": all_columns})
+
+    parser_output_content = parser_output.content
+    parser_output_content = parser_output_content.strip('(')
+    parser_output_content = parser_output_content.strip(')')
+    parser_output_content = parser_output_content.strip(' ')
+    parser_output_content = parser_output_content.split(',')
+
+    gene_name_col = parser_output_content[1]
+    protein_interaction_col = parser_output_content[0]
+    id_col = parser_output_content[2]
+    synonyms_col = parser_output_content[3]
+
+    protein_interacts = st.session_state.merged_df[protein_interaction_col]
+    name_synonyms = st.session_state.genes_info_df[synonyms_col]
+    all_possible_proteins = st.session_state.genes_info_df[id_col]
+    gene_names = st.session_state.genes_info_df[gene_name_col]
+    proteins = st.session_state.merged_df[id_col]
+    label_map_tuples = list(zip(all_possible_proteins, gene_names, name_synonyms))
+    all_proteins = set(proteins)
+
+    # creates a list of interacting proteins to use for nodes
+    interactions = []
+    for index, neighbors in protein_interacts.items():
+        if pd.notna(neighbors) and isinstance(neighbors, str):
+            protein = proteins[index] if index < len(proteins) else None
+            if protein: 
+                neighbor_list = neighbors.split(";")
+                for neighbor in neighbor_list:
+                    clean_neighbor = extract_protein_name(neighbor.strip())
+                    if clean_neighbor and pd.notna(clean_neighbor):
+                        interactions.append(clean_neighbor) 
+    
+    # generates edge pairs in a list of tuples
+    edge_pairs = []
+    for index, neighbors in protein_interacts.items():
+        if pd.notna(neighbors) and isinstance(neighbors, str):
+            protein = proteins[index] if index < len(proteins) else None
+            if protein: 
+                neighbor_list = neighbors.split(";")
+                for neighbor in neighbor_list:
+                    clean_neighbor = extract_protein_name(neighbor.strip())
+                    if clean_neighbor and pd.notna(clean_neighbor):
+                        edge_pairs.append((protein, clean_neighbor))
+    edge_pairs = list({tuple(sorted(edge)) for edge in edge_pairs})
+
+    protein_interacts.tolist()
+    all_proteins = list(all_proteins)
+    html_proteins_list = list(itertools.chain(interactions, all_proteins))
+    
+    file_path = os.path.join("networkdiagram", "protein_network.html")
+    
+
+    # creating node/edge properties
+    node_ids = []
+    for protein in html_proteins_list:
+        if protein not in node_ids:
+            node_ids.append(protein)
+    refined_proteins = all_proteins
+    other_proteins = list(set([protein for protein in html_proteins_list if protein not in all_proteins]))
+
+    # creates labels for proteins in a dict, then cleans labels so only one name shows
+    labels_dict = {}
+    for map in label_map_tuples:
+        if map[0] in html_proteins_list:
+            labels_dict[map[0]] = [map[1], map[2]]
+    for key, value in labels_dict.items():
+        if isinstance(value[0], str):
+            value[0] = value[0].split(';', 1)[0]
+    
+    network_label_map = {protein: labels_dict[protein][0] if protein in labels_dict else f"ID: {protein}" for protein in html_proteins_list}
+
+    selection_label_map = {protein: labels_dict[protein] if protein in labels_dict else f"ID: {protein}" for protein in html_proteins_list}
+    cleaned_selection_map = {
+        protein: str(value).strip("['\"']'").strip(' nan ').replace("'", "") for protein, value in selection_label_map.items()
+    }
+
+    # adds brackets to gene nicknames for selection menu
+    for key, value in cleaned_selection_map.items():
+        if value.startswith('ID:'):
+            cleaned_selection_map[key] = value
+        else:
+            parts = value.split(',', 1)
+            if len(parts) == 2:
+                cleaned_selection_map[key] = f'{parts[0]} [{parts[1]} ]'
+            else:
+                cleaned_selection_map[key] = f'{value}'
+
+    # generates node to write into html file
+    def generate_node(protein):
+        color = "#97c2fc" if protein in other_proteins else "#FF0000"
+        label = network_label_map[protein]
+        return f'    {{"color": "{color}", "id": "{protein}", "label": "{label}", "shape": "dot", "size": 10}}'
+    js_nodes = ",\n".join([generate_node(p) for p in refined_proteins + other_proteins])
+
+    # generates edges to write into the html file
+    def generate_edge(protein1, protein2):
+        color = "#FF0000"
+        return f'   {{"from": "{protein1}", "to": "{protein2}", "width": 1}}'
+    js_edges = ",\n".join([generate_edge(p1, p2) for p1, p2 in edge_pairs])
+
+    # updates html file to add nodes, edges, and update the selection menu
+    if os.path.exists(file_path):
+        with open(file_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+
+        nodes_pattern = re.compile(r"nodes\s*=\s*new\s*vis\.DataSet\(\[(.*?)\]\);", re.DOTALL)
+        updated_html = nodes_pattern.sub(f"nodes = new vis.DataSet([\n{js_nodes}\n]);", html_content)
+
+        edges_pattern = re.compile(r"edges\s*=\s*new\s*vis\.DataSet\(\[(.*?)\]\);", re.DOTALL)
+        updated_html = edges_pattern.sub(f"edges = new vis.DataSet([\n{js_edges}\n]);", updated_html)
+
+        select_pattern = r'(<select[^>]*id="select-node"[^>]*>)(.*?)(</select>)'
+        match = re.search(select_pattern, updated_html, re.DOTALL)
+        if match:
+            before_options = match.group(1)  
+            after_options = match.group(3)  
+
+            new_options = "\n".join([f'    <option value="{node}">{cleaned_selection_map[node]}</option>' for node in other_proteins + refined_proteins])
+            new_select_html = before_options + "\n" + new_options + "\n" + after_options
+            updated_html = re.sub(select_pattern, new_select_html, updated_html, flags=re.DOTALL)
+
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(updated_html)
+        
+        st.components.v1.html(updated_html, height=800, scrolling=True)
+    
+    else:
+        st.write("Could not update the HTML file necessary to create the Network Diagram")
+
 
 
 def repeat_refinement(llm):
@@ -558,22 +716,37 @@ def analyze_data(llm):
     if 'most_recent_chart_selection' not in st.session_state:
         st.session_state.most_recent_chart_selection = None
 
+    if 'interactive_visualization' not in st.session_state:
+        st.session_state.interactive_visualization = None
+
     with col1:
-        if st.button("Euler Diagram: Disease Associations",use_container_width=True):
+        if st.button("Neurodegenerative Disease Associations", use_container_width=True):
+            st.session_state.interactive_visualization = None
             build_visual_1(llm=llm)
+        if st.button("Protein Interactions", use_container_width=True, help="Not recommended for more than 500 genes"):
+            st.session_state.most_recent_chart_selection = None
+            st.session_state.interactive_visualization = "network"
 
     with col2:
-        if st.button("Bar Chart: Subcellular Location",use_container_width=True):
+        if st.button("Top 20 Subcellular Locations",use_container_width=True):
+            st.session_state.interactive_visualization = None
             build_visual_2(llm=llm)
-            
+        if st.button("Primary Structure Overview", use_container_width=True, help="Only displays first 50 proteins in your refined data"):
+            st.session_state.most_recent_chart_selection = None
+            st.session_state.interactive_visualization = "residues"
+    
+    if st.session_state.interactive_visualization == "network":
+        build_visual_3(llm=llm)
+    elif st.session_state.interactive_visualization == "residues":
+        Visualization_Functions.plot_residues(df=st.session_state.merged_df)
+    
     # Print most recent saved chart to the screen:
     if st.session_state.most_recent_chart_selection: 
          st.image(st.session_state.most_recent_chart_selection) # SHOULD MAKE IT SO THAT THIS GETS DELETED IF NEW REFINEMENTS ARE MADE (as it would no longer be accurate)
         
     with st.expander("**Click to view your current gene data**"):
          st.dataframe(st.session_state['merged_df'])
-
-    st.divider()
+    # clear most recent chart selection when button 3 clicked
     
     send_genes_placeholder = st.empty()
     with send_genes_placeholder:
@@ -582,3 +755,9 @@ def analyze_data(llm):
             st.link_button(label="View Genes in the Biominers Tool Suite",url=st.session_state["neurokinex_url"],type="primary",use_container_width=True)
 
     st.divider()
+
+
+
+
+
+    
