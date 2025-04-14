@@ -587,12 +587,12 @@ def chat_with_data(llm, rag_llm):
 
     st.header("Chat with your data")
     st.markdown("""Ask questions about the genes/proteins you have narrowed down, general questions about biology, and more. If you have uploaded expression data, you may also use that as part of your queries.\n
-**For more complex questions where sources or internet search are desired**, try using Perplexity mode (**Note** that in this mode the agent does not have direct access to your data table).""")
+**For more complex questions where sources or internet search are desired**, try using Perplexity mode (**Note** that in this mode the agent does not have direct access to your data table. If you are referencing specific genes/proteins, make sure they are in your chat history).""")
 
     if "messages" not in st.session_state or st.sidebar.button("Clear chat history",use_container_width=True):
-        st.session_state["messages"] = [{"role": "system", "content": "Run code or pandas expressions on the dataframes ('df1' and 'df2') given to you to answer the user queries. Assume the user is talking about 'their' genes in df1 unless they are referencing expression."},
-                                        {"role": "assistant", "content": "Hi! What do you want to know about your genes/proteins?"}]
-
+        st.session_state["messages"] = [{"role": "system", "content": "Run code or pandas expressions on the dataframes ('df1' and 'df2') given to you to answer the user queries. Assume the user is talking about 'their' genes in df1 unless they are referencing expression."}]
+        # NOTE: Can add an extra 'assistant' message here that says Hi/welcome, but that breaks perplexity.
+        
     online_search = st.sidebar.toggle("Toggle Perplexity Online Search",help="When ON, uses Perplexity instead of ChatGPT as the base model LLM. Perplexity has realtime access to the internet and can provide real links and sources.")
 
     
@@ -601,7 +601,7 @@ def chat_with_data(llm, rag_llm):
             st.chat_message(msg["role"]).write(msg["content"])
             # writes the user's progress -S
 
-    if prompt := st.chat_input(placeholder="What is this data about?"):
+    if prompt := st.chat_input(placeholder="Ask a question here"):
         # Tack on instructions to the beginning of prompt HERE
         st.session_state.messages.append({"role": "user", "content": prompt})
         st.chat_message("user").write(prompt)
@@ -665,7 +665,7 @@ def chat_with_data(llm, rag_llm):
                     numbered_links = "\n".join(f"{i+1}. {link}" for i, link in enumerate(response_links))
                     final_response = f"{response_content}\n\n{numbered_links}"
                     st.session_state.messages.append({"role": "assistant", "content": final_response})
-                    st.write(final_response)
+                    st.write(final_response) # Maybe just change this to 'response' after the April 2025 API changes
 
     # Put expander with the data at the bottom:
     with st.expander("**Click to view data being referenced**"):
