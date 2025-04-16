@@ -20,3 +20,7 @@ st.markdown("""
             3. Analyze your data. Get AI generated graphs and visualizations suited to your research objectives, or view your genes of interest in our other tools (e.g. NeuroKinex).
             
             """)
+
+st.divider()
+with st.expander("▶ Watch Tutorial Video",expanded=True):
+    st.video("https://youtu.be/MUc_28f-k5U")
