@@ -743,7 +743,9 @@ def analyze_data(llm):
     # Print most recent saved chart to the screen:
     if st.session_state.most_recent_chart_selection: 
          st.image(st.session_state.most_recent_chart_selection) # SHOULD MAKE IT SO THAT THIS GETS DELETED IF NEW REFINEMENTS ARE MADE (as it would no longer be accurate)
-        
+    
+    st.divider()
+    
     with st.expander("**Click to view your current gene data**"):
          st.dataframe(st.session_state['merged_df'])
     # clear most recent chart selection when button 3 clicked
