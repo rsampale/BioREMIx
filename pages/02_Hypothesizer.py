@@ -60,10 +60,9 @@ if st.session_state['authenticated']:
 
     # CREATE MODELS
     llm_4o = ChatOpenAI(temperature=0, model='gpt-4o-2024-11-20', openai_api_key=OPENAI_API_KEY)
-    llm_o1mini = ChatOpenAI(temperature=1,model='o1-mini', openai_api_key=OPENAI_API_KEY) # Actually might work now, but takes a long time. Investigate further by printing response.
-    llm_o1prev = ChatOpenAI(temperature=1,model='o1-preview', openai_api_key=OPENAI_API_KEY)
-    llm_o3_mini = ChatOpenAI(temperature=0, model='o3-mini', openai_api_key=OPENAI_API_KEY) # no access yet as of 02/03/25
-    rag_llm = ChatOpenAI(openai_api_key = st.secrets.OPENAI_API_KEY, model = "gpt-4o-mini")
+    llm_41 = ChatOpenAI(temperature=0, model='gpt-4.1', openai_api_key=OPENAI_API_KEY)
+    llm_o4_mini = ChatOpenAI(temperature=0, model='o4-mini', openai_api_key=OPENAI_API_KEY) # no access yet as of 02/03/25
+    rag_llm = ChatOpenAI(openai_api_key = st.secrets.OPENAI_API_KEY, model = "o4-mini")
 
     # PAGE FORMAT CODE START
     # Make into invisible container so it can be hidden with appropriate buttons?
@@ -128,7 +127,7 @@ if st.session_state['authenticated']:
             st.session_state['skipped_initial_refine'] = False
 
             pd_df_agent = create_pandas_dataframe_agent(
-                llm=llm_4o,
+                llm=llm_41,
                 df=st.session_state['relevant_cols_only_df'],
                 agent_type="tool-calling", # Significantly faster and less likely to run into parsing errors than the default
                 verbose=True,
@@ -200,13 +199,13 @@ if st.session_state['authenticated']:
         ### REPEAT REFINEMENT: 
         
         if st.session_state['do_refine_loop']:
-            repeat_refinement(llm=llm_4o)
+            repeat_refinement(llm=llm_41)
 
         if st.session_state['data_chat']:
-            chat_with_data(llm=llm_4o, rag_llm=llm_4o)
+            chat_with_data(llm=llm_41, rag_llm=llm_41)
 
         if st.session_state['analyze_data']:
-            analyze_data(llm=llm_4o)
+            analyze_data(llm=llm_41)
 
         left_col, right_col = st.columns(2)
         chat_button_ph = st.empty()
