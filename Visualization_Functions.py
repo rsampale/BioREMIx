@@ -8,7 +8,15 @@ def plot_residues(df: pd.DataFrame) -> go.Figure:
     df["Protein_length"] = pd.to_numeric(df["Protein_length"], errors="coerce")
     df.dropna(subset=["Protein_length"], inplace=True)
     df["Protein_length"] = df["Protein_length"].astype(int)
- 
+    # filter for large outliers
+    length_median = df["Protein_length"].median()
+    length_std = df["Protein_length"].std()
+    outlier_threshold = 1
+    length_cutoff = length_median + outlier_threshold * length_std
+    
+    excluded_proteins = df[df["Protein_length"] > length_cutoff] 
+    df = df[df["Protein_length"] <= length_cutoff]
+
     residue_columns = [
         "Active_site_residues", "Binding_site_residues", "Transmembrane_domain_residues",
         "Intramembrane_residues", "Glycosylation_residues", "Modified_residues",
@@ -211,14 +219,22 @@ def plot_residues(df: pd.DataFrame) -> go.Figure:
         legend=dict(
             orientation="h",
             x=0,
-            y=1.02
+            y=1.05
         ),
-        margin=dict(t=100),
+        margin=dict(t=223),
         hovermode="closest"
     )
-
+    st.markdown(
+        "🔍 **Tip:** Highlight a region to zoom in. Double-click the background to zoom out.",
+        unsafe_allow_html=True
+    )
     st.plotly_chart(fig, use_container_width=True)
- 
+ # Show warning if proteins were excluded due to being large outliers
+    if not excluded_proteins.empty:
+        excluded_names = ", ".join(excluded_proteins["Gene_Name"].dropna().unique())
+        st.warning(
+            f"The following proteins were excluded from visualization because their lengths were greater than {int(length_cutoff)} residues: {excluded_names}"
+        )
     genes = df["Gene_Name"].dropna().unique()
     selected_gene = st.selectbox("🔗 Select a gene to view its UniProt entry:", options=genes)
  
