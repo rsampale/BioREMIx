@@ -4,3 +4,5 @@ backgroundColor="#ffffff"
 secondaryBackgroundColor="#cdfbc8"
 textColor="#000000"
 font="sans serif"
+[server]
+fileWatcherType = "poll"

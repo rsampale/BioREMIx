@@ -20,7 +20,7 @@ from langchain.callbacks.streamlit import StreamlitCallbackHandler # deprecated
 from matplotlib_set_diagrams import EulerDiagram
 from pyvis.network import Network
 from rag import col_retrieval_rag
-import Visualization_Functions
+from vis import plot_residues, plot_coexpressed, plot_gsea
 
 def authenticate():
     # placeholders variables for UI 
@@ -726,6 +726,9 @@ def analyze_data(llm):
         if st.button("Protein Interactions", use_container_width=True, help="Not recommended for more than 500 genes"):
             st.session_state.most_recent_chart_selection = None
             st.session_state.interactive_visualization = "network"
+        if st.button("Transcript Tissue Co-expression",use_container_width=True):
+            st.session_state.most_recent_chart_selection = None
+            st.session_state.interactive_visualization = "coexpress"
 
     with col2:
         if st.button("Top 20 Subcellular Locations",use_container_width=True):
@@ -734,11 +737,20 @@ def analyze_data(llm):
         if st.button("Primary Structure Overview", use_container_width=True, help="Only displays first 50 proteins in your refined data"):
             st.session_state.most_recent_chart_selection = None
             st.session_state.interactive_visualization = "residues"
+        if st.button("Gene-Set Enrichment", use_container_width=True):
+            st.session_state.most_recent_chart_selection = None
+            st.session_state.interactive_visualization = "gsea"
     
+    
+    # Necessary to put the interactive visualizations in the main panel:
     if st.session_state.interactive_visualization == "network":
         build_visual_3(llm=llm)
     elif st.session_state.interactive_visualization == "residues":
-        Visualization_Functions.plot_residues(df=st.session_state.merged_df)
+        plot_residues(df=st.session_state.merged_df)
+    elif st.session_state.interactive_visualization == "coexpress":
+        plot_coexpressed(merged_df = st.session_state.merged_df)
+    elif st.session_state.interactive_visualization == "gsea":
+        plot_gsea(merged_df = st.session_state.merged_df)
     
     # Print most recent saved chart to the screen:
     if st.session_state.most_recent_chart_selection: 
