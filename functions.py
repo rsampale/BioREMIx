@@ -738,7 +738,7 @@ def analyze_data(llm):
         if st.button("Primary Structure Overview", use_container_width=True, help="Only displays first 50 proteins in your refined data"):
             st.session_state.most_recent_chart_selection = None
             st.session_state.interactive_visualization = "residues"
-        if st.button("Gene-Set Enrichment", use_container_width=True):
+        if st.button("Gene Set Enrichment Analysis", use_container_width=True):
             st.session_state.most_recent_chart_selection = None
             st.session_state.interactive_visualization = "gsea"
     

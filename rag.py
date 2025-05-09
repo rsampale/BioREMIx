@@ -10,8 +10,13 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain import hub
 
 def create_colname_vectorstore():
+
+    colmeta_df = st.session_state.get('genes_colmeta_df')
+    if colmeta_df is None:
+        raise RuntimeError("`genes_colmeta_df` not found in session_state; did you run load_default_data() first?")
+
     docs = []
-    for _, row in st.session_state.genes_colmeta_df.iterrows():
+    for _, row in colmeta_df.iterrows():
         text = f"Column Name: {row['Colname']}\nDescription: {row['Description']}"
         doc = Document(
             page_content=text,

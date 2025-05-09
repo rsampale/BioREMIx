@@ -24,7 +24,8 @@ if not st.session_state['authenticated']:
 if st.session_state['authenticated']:
     
     # Load the genes_info default data
-    load_default_data()
+    if st.session_state.get('genes_info_df') is None:
+        load_default_data()
     
     # Get API keys
     OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]

@@ -36,6 +36,8 @@ def load_contribs(gene: str):
 
 def plot_residues(df: pd.DataFrame) -> go.Figure:
 
+    st.divider()
+
     df["Protein_length"] = pd.to_numeric(df["Protein_length"], errors="coerce")
     df.dropna(subset=["Protein_length"], inplace=True)
     df["Protein_length"] = df["Protein_length"].astype(int)
@@ -250,7 +252,7 @@ def plot_residues(df: pd.DataFrame) -> go.Figure:
         legend=dict(
             orientation="h",
             x=0,
-            y=1.05
+            y=1.2
         ),
         margin=dict(t=223),
         hovermode="closest"
@@ -383,7 +385,7 @@ def plot_gsea(merged_df):
 
 
     st.divider()
-    st.header("Gene-set enrichment analysis (GSEA)")
+    st.header("Gene Set Enrichment Analysis (GSEA)")
 
     custom_genes = st.toggle("Analyze a custom set of genes (Default: Current refined genes)")
 

@@ -8,10 +8,12 @@ from rag import create_colname_vectorstore
 def load_default_data():
     if 'genes_info_df' not in st.session_state:
         st.session_state['genes_info_df'] = None
-    if 'genes_colmeta' not in st.session_state:
+    if 'genes_colmeta_dict' not in st.session_state:
         st.session_state['genes_colmeta_dict'] = None
     if 'expression_df' not in st.session_state:
         st.session_state['expression_df'] = None
+    if 'genes_colmeta_df' not in st.session_state:
+        st.session_state['genes_colmeta_df'] = None
 
     try:
         default_allgenes_filename = "data/250219_GeneAnnotation_Data.csv"
@@ -45,7 +47,7 @@ def load_default_data():
         genes_df = pd.read_csv(file_name,low_memory=False,na_values=['NA', '', 'null'])
         genes_df = genes_df[list(colmeta_dict.keys())] # Keep only the relevant columns, as determined by the colmeta file
         genes_df.columns = genes_df.columns.str.replace('.', '_')
-        colmeta_df['Colname'] = colmeta_df['Colname'].str.replace('.', '_', regex=False)
+        colmeta_df['Colname'] = colmeta_df['Colname'].str.replace('.', '_', regex=False) # NEEDS TO BE DOWN HERE BECAUSE OTHERWISE WE GET OUT OF INDEX ERROR DUE TO TECHNICALLY WRONG NAMES
         
         expression_df = pd.read_csv(expression_file_name)
 
@@ -54,6 +56,9 @@ def load_default_data():
         st.session_state['genes_colmeta_dict'] = colmeta_dict
         st.session_state['genes_colmeta_df'] = colmeta_df
         st.session_state['expression_df'] = expression_df
-        create_colname_vectorstore()
-    except:
-        print("Error loading the default genes/info data.")
+
+        create_colname_vectorstore() # Can only be created after genes_colmeta_df is defined
+
+    except Exception as e:
+        st.error(f"Failed to load default data: {e}")
+        raise
