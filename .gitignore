@@ -2,6 +2,7 @@
 .streamlit/secrets.toml
 # ignore virtual envs
 .venv
+.html
 bioremix/ 
 # ignore Python bytecode files
 __pycache__/

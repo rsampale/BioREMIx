@@ -707,6 +707,7 @@ def analyze_data(llm):
     defined_merged_df = defined_merged_df.loc[:, ~defined_merged_df.columns.duplicated()]
 
     st.session_state['merged_df'] = defined_merged_df
+    st.session_state['merged_df']['Gene_Name'] = st.session_state['merged_df']['Gene_Name'].astype(str) # Hardcoded to only work for Gene_Name column, but makes sure no floats are left which will later break some visualizations
 
     st.title("Data Visualization")
     st.subheader("Your genes at a glance:")

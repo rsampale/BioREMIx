@@ -29,6 +29,7 @@ if st.session_state['authenticated']:
         st.write("A csv where **rows = genes, and cols = metadata/information.**\n\nOptionally, you may provide a csv with two columns ('Colname', 'Description') to explainin column names.")
 
         with st.expander("**Upload gene information data**",expanded=True):
+            st.warning("**Note:** Deleting certain columns from the default gene information data may break certain features of the app. We recommend to only modify the file by adding additional columns (annotations), or additional genes (rows)")
             ## MAIN DATAFRAME UPLOAD:
             default_allgenes_filename = "data/250219_GeneAnnotation_Data.csv"
             with open(default_allgenes_filename, 'r') as file:

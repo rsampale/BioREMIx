@@ -269,7 +269,7 @@ def plot_residues(df: pd.DataFrame) -> go.Figure:
     if not excluded_proteins.empty:
         excluded_names = ", ".join(excluded_proteins["Gene_Name"].dropna().unique())
         st.warning(
-            f"The following proteins were excluded from visualization because their lengths were greater than {int(length_cutoff)} residues: {excluded_names}"
+            f"The following proteins were excluded from visualization because their lengths were greater the length cutoff of {int(length_cutoff)} residues: {excluded_names}"
         )
  
     genes = df["Gene_Name"].dropna().unique()
