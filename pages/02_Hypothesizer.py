@@ -206,7 +206,7 @@ if st.session_state['authenticated']:
             chat_with_data(llm=llm_41, rag_llm=llm_41)
 
         if st.session_state['analyze_data']:
-            analyze_data(llm=llm_4o)
+            analyze_data(llm=llm_41)
 
         left_col, right_col = st.columns(2)
         chat_button_ph = st.empty()

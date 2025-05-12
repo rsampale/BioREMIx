@@ -365,19 +365,15 @@ def build_visual_3(llm):
     chain = prompt | llm
     parser_output = chain.invoke({"all_cols": all_columns})
 
-    parser_output_content = parser_output.content
-    parser_output_content = parser_output_content.strip('(')
-    parser_output_content = parser_output_content.strip(')')
-    parser_output_content = parser_output_content.strip(' ')
-    parser_output_content = parser_output_content.split(',')
-
-    gene_name_col = parser_output_content[1]
-    protein_interaction_col = parser_output_content[0]
-    id_col = parser_output_content[2]
-    synonyms_col = parser_output_content[3]
+    parser_output_content = parser_output.content.strip("() ")
+    parser_output_content = [col.strip() for col in parser_output_content.split(",")]
+    protein_interaction_col, gene_name_col, id_col, synonyms_col = parser_output_content
 
     protein_interacts = st.session_state.merged_df[protein_interaction_col]
-    name_synonyms = st.session_state.genes_info_df[synonyms_col]
+    name_synonyms = (
+        st.session_state.genes_info_df[synonyms_col] # Needs to be genes_info_df to get all of them, not just the ones involved in refined proteins
+        .str.strip()
+    ) 
     all_possible_proteins = st.session_state.genes_info_df[id_col]
     gene_names = st.session_state.genes_info_df[gene_name_col]
     proteins = st.session_state.merged_df[id_col]
