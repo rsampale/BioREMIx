@@ -22,7 +22,7 @@ st.markdown("""
             """)
 
 st.divider()
-with st.expander("**Latest Updates and Changes (09/05/25):**"):
+with st.expander("**Latest Updates and Changes (05/09/25):**"):
     st.markdown("""
                 - Added a GSEA tool in the analysis page, allowing users to perform Gene Set Enrichment Analysis on their filtered genes or a custom gene list.
                 - Added a Tissue Coexpression Visualization tool, which lets users see which genes are most highly co-expressed with their gene of interest across different tissues.
