@@ -127,12 +127,48 @@ def undo_last_refinement(refinement):
         st.session_state.user_refinement_q = None
         st.session_state.skipped_initial_refine = False
         st.session_state.last_pandas_code = None
+        st.session_state.used_uploaded_goi = False
     elif refinement == "repeat":
         if len(st.session_state.gene_df_history) > 1:
             st.session_state.gene_df_history.pop()
             st.session_state.user_refined_df = st.session_state.gene_df_history[-1][0] # Gets the df part of the most recent tuple in the history
             st.session_state.last_refinement_q = st.session_state.gene_df_history[-1][1]
             st.session_state.last_pandas_code = st.session_state.gene_df_history[-1][2]
+
+def apply_uploaded_goi():
+    st.session_state['user_refinement_q'] = (
+        f"Filter the dataframe to only include genes in the list: "
+        f"{st.session_state['uploaded_goi_list'][:5]}..."
+    )
+    st.session_state['skipped_initial_refine'] = False
+
+    # actually filter the dataframe
+    goi_list = st.session_state["uploaded_goi_list"]
+    goi_set  = set(goi_list)  # for O(1) lookups
+    base_df = st.session_state["relevant_cols_only_df"]
+    mask_name = base_df["Gene_Name"].isin(goi_set)
+    mask_synonyms = (
+        base_df["Gene_Name_Synonyms"]
+          .fillna("")                  # avoid NaN
+          .str.split(",")              # make lists
+          .apply(lambda lst: any(sym.strip() in goi_set for sym in lst))
+    )
+    filtered_df = base_df[mask_name | mask_synonyms]
+    # st.dataframe(filtered_df) # for testing
+    st.session_state['user_refined_df'] = filtered_df
+    st.session_state['last_refinement_q'] = st.session_state['user_refinement_q']
+    st.session_state['last_pandas_code'] = (
+        "relevant_cols_only_df["
+          "(relevant_cols_only_df['Gene_Name'].isin(goi_list)) | "
+          "(relevant_cols_only_df['Gene_Name_Synonyms']"
+            ".fillna('')"
+            ".str.split(',')"
+            ".apply(lambda lst: any(sym.strip() in goi_list for sym in lst)))"
+        "]"
+    )
+    # mark that we used the uploaded list
+    st.session_state['used_uploaded_goi'] = True
+
 
 # builds a pie chart for disease association
 def build_visual_1(llm):
@@ -685,7 +721,7 @@ def send_genesdata():
     # st.write(response)
     if response.status_code == 200:
         session_id = response_json["session_id"]
-        shiny_url = f"https://biominers.net/NeuroKinex/?session_id={session_id}"
+        shiny_url = f"https://biominers.net/?session_id={session_id}"
         st.session_state["neurokinex_url"] = shiny_url
         # st.markdown(f"[Go to Shiny App]({shiny_url})")
         st.markdown(f"WORKED: {session_id}")

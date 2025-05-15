@@ -28,7 +28,7 @@ if st.session_state['authenticated']:
     st.sidebar.button("Reboot Session", on_click=reboot_hypothesizer,use_container_width=True,help="Completely reset the application and any changes made.")
     
     st.title("Data Upload")
-    gene_data_tab, expression_data_tab = st.tabs(["Gene-annotation Data", "Gene Expression Data"])
+    gene_data_tab, expression_data_tab, gene_list_tab = st.tabs(["Gene-annotation Data", "Gene Expression Data", "Genes of Interest (list)"])
     
     with gene_data_tab:
         st.header("Gene-annotation data upload")
@@ -156,3 +156,38 @@ if st.session_state['authenticated']:
             )
             
         st.session_state['expression_df'] = expression_df
+        
+    with gene_list_tab:
+        st.header("Gene List Upload")
+        st.write("A txt file containing all your genes of interest, one gene symbol on each line.")
+        
+        with st.expander("**Upload genes of interest list**",expanded=True):
+            uploaded_genelist_file = st.file_uploader("Upload your own **gene list** (see format specifications above)", type=["txt"],key="genelist_file_uploader")
+            
+            # Read gene list data from upload 
+            if uploaded_genelist_file is not None:
+                st.session_state["genelist_bytes"] = uploaded_genelist_file.read()
+                st.session_state["genelist_name"] = uploaded_genelist_file.name
+
+            if "genelist_bytes" in st.session_state: # If the user switched back onto this tab, their old upload should persist
+                raw_genelist = st.session_state["genelist_bytes"]
+                genelist_name = st.session_state["genelist_name"]
+                lines = raw_genelist.decode('utf-8').splitlines()
+                # strip whitespace and drop empties
+                gene_list = [g.strip() for g in lines if g.strip()]
+                
+                
+                st.session_state["uploaded_goi_list"] = gene_list
+            
+            fname = st.session_state.get("genelist_name", "No file uploaded")
+            bytes_data = st.session_state.get("genelist_bytes", b"")
+            has_data = "genelist_bytes" in st.session_state
+                
+            st.write(f"**Currently Selected File Name:** {fname}")
+            st.download_button(
+                label="Download Gene List Data File",
+                data=bytes_data,
+                file_name=fname,
+                mime="text/plain",
+                disabled=not has_data
+            )

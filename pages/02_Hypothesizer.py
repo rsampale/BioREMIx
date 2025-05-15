@@ -50,6 +50,8 @@ if st.session_state['authenticated']:
         st.session_state['skipped_col_filter'] = False
     if 'skipped_initial_refine' not in st.session_state:
         st.session_state["skipped_initial_refine"] = False
+    if 'used_uploaded_goi' not in st.session_state:
+        st.session_state["used_uploaded_goi"] = False
     if 'last_pandas_code' not in st.session_state: # So that users can see the most recent pandas code executed
         st.session_state['last_pandas_code'] = None
     if 'gene_df_history' not in st.session_state: # STORES PAST AND PRESENT GENE DFs TO ALLOW FOR UNDOs
@@ -80,7 +82,7 @@ if st.session_state['authenticated']:
         
         initial_df = st.session_state['genes_info_df']
         st.session_state['relevant_cols_only_df'] = initial_df
-        st.session_state['user_refined_df'] = st.session_state['relevant_cols_only_df'] 
+ 
 
         st.divider()
         
@@ -103,10 +105,20 @@ if st.session_state['authenticated']:
             
         st.header("Refine your data",divider='green')
 
+        # Check to see if the user has uploaded genes of interest
+        if st.session_state.get('uploaded_goi_list') is not None:
+            st.info("**We have detected that you have uploaded a list of genes of interest.**\n\nTo use the uploaded genes as your initial filter, click the button below. Otherwise, provide a refinement statement in the box below as usual.")
+            st.button("Use uploaded genes as initial filter",use_container_width=True,help="Click to use the uploaded list of genes as your initial filter. You may still refine further after this step.",on_click=apply_uploaded_goi)
+                
+        # st.write(st.session_state['user_refinement_q'],st.session_state['used_uploaded_goi'],st.session_state['skipped_initial_refine']) # For testing
+
         refine_box = st.container(height=150)
         with refine_box:
-            if 'init_refinement_q_widget' not in st.session_state:
-                st.session_state.init_refinement_q_widget = None
+            if st.session_state.get('init_refinement_q_widget') is None:
+                if st.session_state['used_uploaded_goi']:
+                    st.session_state.init_refinement_q_widget = st.session_state['user_refinement_q'] # Set the widget to initially render the fake refinement query made by using uploaded GOI, otherwise it is None and will turn user_refinement_q to None
+                else:
+                    st.session_state.init_refinement_q_widget = None
             st.text_input("E.g. 'Only keep genes involved in ALS'",max_chars=500,key='init_refinement_q_widget',on_change=submit_text(location='initial_refinement'),
                           help="Submit your first data refinement. Note that you may only submit one in this stage (see 'Keep Refining' to add more). It is generally recommended to submit refinements/filters one at a time. Complex refinements may occasionally fail.")
             st.write("**Your Data Refinement Query:** ",st.session_state['user_refinement_q'])
@@ -117,11 +129,12 @@ if st.session_state['authenticated']:
             with col1:
                 if not st.session_state['skipped_initial_refine']:
                     st.markdown(st.session_state.provide_refinement_text)
-            with col2:
-                if st.button("Keep all rows/genes", use_container_width=True, on_click=clear_text(text_element='ref_prompt')):
-                    st.session_state['user_refined_df'] = st.session_state['relevant_cols_only_df'] # If the user skips the first refinement, the refined df is just the df with relevant columns
-                    st.session_state["skipped_initial_refine"] = True
-        elif st.session_state['user_refinement_q']:
+            if st.session_state.used_uploaded_goi is False:
+                with col2:
+                    if st.button("Keep all rows/genes", use_container_width=True, on_click=clear_text(text_element='ref_prompt')):
+                        st.session_state['user_refined_df'] = st.session_state['relevant_cols_only_df'] # If the user skips the first refinement, the refined df is just the df with relevant columns
+                        st.session_state["skipped_initial_refine"] = True
+        elif st.session_state['user_refinement_q'] and not st.session_state['used_uploaded_goi']:
 
             st.session_state['last_refinement_q'] = st.session_state.user_refinement_q
 
