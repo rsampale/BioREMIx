@@ -37,7 +37,7 @@ if st.session_state['authenticated']:
         with st.expander("**Upload gene information data**",expanded=True):
             st.warning("**Note:** Deleting certain columns from the default gene information data may break certain features of the app. We recommend to only modify the file by adding additional columns (annotations), or additional genes (rows)")
             ## MAIN DATAFRAME UPLOAD:
-            default_allgenes_filename = "data/250219_GeneAnnotation_Data.csv"
+            default_allgenes_filename = "data/250219_GeneAnnotation_Data_V2.csv"
             uploaded_file = st.file_uploader("Upload your own **gene-metadata matrix**", type=["txt", "csv", "json"],key="genes_file_uploader") # not actually tested with non csv types
             
             # Read dataframe from uploaded file bytes or default file path

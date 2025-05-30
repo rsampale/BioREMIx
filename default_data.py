@@ -16,7 +16,7 @@ def load_default_data():
         st.session_state['genes_colmeta_df'] = None
 
     try:
-        default_allgenes_filename = "data/250219_GeneAnnotation_Data.csv"
+        default_allgenes_filename = "data/250219_GeneAnnotation_Data_V2.csv"
         with open(default_allgenes_filename, 'r') as file:
             default_allgenes_content = file.read()
         file_name = default_allgenes_filename
