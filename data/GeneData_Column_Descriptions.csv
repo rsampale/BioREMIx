@@ -48,9 +48,6 @@ Protein.class,"The protein class of the disease product. E.g. Enzymes, disease r
 Cell.type.specificity,The cell type(s) that a gene is specific to (if any). E.g. Cardiomyocytes: 26.2;dendritic cells: 81.0;Ovarian stromal cells: 103.4
 Axonal.CMT,The gene is associated with Axonal Charcot-Marie-Tooth (CMT) disease. 1 if associated.
 Demyelinating.CMT,The gene is associated with Demyelinating Charcot-Marie-Tooth (CMT) disease. 1 if associated.
-Giwon.list,Gene is a part of Giwon's list. 1 if true
-Robi.list,Gene is a part of Rob's list. 1 if true
-Jeff.list,Gene is a part of Jeff's list. 1 if true
 ALS,The gene is associated with Amyotrophic lateral sclerosis (ALS) disease. 1 if associated.
 dHMN,The gene is associated with a distal hereditary motor neuropathy (dHMN) disease. 1 if associated.
 HSP,The gene is associated with Henoch-Schönlein Purpura (HSP) disease. 1 if associated.
@@ -61,4 +58,3 @@ Diabetes,The gene is associated with Diabetes disease. 1 if associated.
 Cancer.related,The gene is associated with Cancer. 1 if associated.
 Associated.With.Any.Disease,The gene is associated with some disease. 1 if associated.
 Neurodegenerative.disease.count,Number of neurodegenerative diseases (NDDs) the gene is associated with.
-Gene.of.interest,Whether the gene is one of the MGI's genes of interest. 1 if true
