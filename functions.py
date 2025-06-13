@@ -11,6 +11,7 @@ import pandas as pd
 import requests
 import re
 import io
+import math
 import itertools
 import warnings
 from openai import OpenAI
@@ -18,9 +19,10 @@ from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_core.prompts import PromptTemplate
 from langchain.callbacks.streamlit import StreamlitCallbackHandler # deprecated
 from matplotlib_set_diagrams import EulerDiagram
+from streamlit_plotly_events import plotly_events
 from pyvis.network import Network
 from rag import col_retrieval_rag
-from vis import plot_residues, plot_coexpressed, plot_gsea
+from vis import plot_residues, plot_coexpressed, plot_gsea, create_regional_hits_plot
 
 def authenticate():
     # placeholders variables for UI 
@@ -169,6 +171,353 @@ def apply_uploaded_goi():
     # mark that we used the uploaded list
     st.session_state['used_uploaded_goi'] = True
 
+@st.cache_data(show_spinner=False)
+def fetch_gwas_hits_by_gene(
+    symbol: str,
+    max_snps: int = 30
+) -> pd.DataFrame:
+    """
+    1) Fetch all SNPs mapped to `symbol` via:
+         GET /singleNucleotidePolymorphisms/search/findByGene?geneName=<symbol>&size=500
+       (page through `_links.next` if needed). Each SNP object has `rsId`, 
+       and `locations[0].chromosomeName` + `chromosomePosition` (GRCh38).
+    2) For each rsId, pull its associations via:
+         GET /singleNucleotidePolymorphisms/{rsId}/associations?projection=associationBySnp
+       That returns the SNP’s association objects; each has:
+         - `pvalue`
+         - `_links.efoTraits.href` to get trait(s)
+    3) From each associationBySnp record, extract:
+         - pvalue (float)
+         - efoTraits link → call it once → collect embedded `efoTraits[*].trait`
+    4) Build a DataFrame of (variant_id, chrom, pos, pval, trait).
+    5) Sort by pval ascending, keep only the top `max_snps` rows.
+    """
+
+    BASE = "https://www.ebi.ac.uk/gwas/rest/api"
+
+    t_start_total = time.perf_counter()
+    print(f"[TIMER] Starting fetch_gwas_hits_by_gene('{symbol}')")
+
+    # 1) Fetch SNPs by gene
+    t0 = time.perf_counter()
+    snps = []
+    url  = f"{BASE}/singleNucleotidePolymorphisms/search/findByGene"
+    params = {"geneName": symbol, "size": 500}
+    while url:
+        resp = requests.get(url, params=params, timeout=10)
+        resp.raise_for_status()
+        js = resp.json()
+        page_snps = js.get("_embedded", {}).get("singleNucleotidePolymorphisms", [])
+        snps.extend(page_snps)
+        nxt = js.get("_links", {}).get("next", {}).get("href")
+        url = nxt
+        params = {}
+    t1 = time.perf_counter()
+    print(f"[TIMER] fetch SNP list took {t1 - t0:.2f}s ({len(snps)} SNPs)")
+
+    if not snps:
+        print(f"[TIMER] No SNPs for gene '{symbol}'.")
+        return pd.DataFrame(columns=["variant_id", "chrom", "pos", "pval", "trait"])
+
+    records = []
+    # 2) For each rsId, pull associationBySnp
+    for snp in snps:
+        rs = snp.get("rsId")
+        loc0 = snp.get("locations", [{}])[0]
+        chrom = loc0.get("chromosomeName")
+        pos = loc0.get("chromosomePosition")
+        if (not rs) or (chrom is None) or (pos is None):
+            continue
+
+        # Association fetch timing
+        t2 = time.perf_counter()
+        aurl = f"{BASE}/singleNucleotidePolymorphisms/{rs}/associations"
+        aparams = {"projection": "associationBySnp", "size": 500}
+        aresp = requests.get(aurl, params=aparams, timeout=10)
+        t3 = time.perf_counter()
+        print(f"[TIMER] fetch associations for {rs} took {t3 - t2:.2f}s")
+
+        if aresp.status_code != 200:
+            continue
+
+        ajs = aresp.json()
+        assoc_list = ajs.get("_embedded", {}).get("associations", [])
+        if not assoc_list:
+            continue
+
+        # pick the association with smallest pvalue
+        best_p = math.inf
+        best_trait = ""
+        for a in assoc_list:
+            pval = a.get("pvalue")
+            if pval is None:
+                continue
+            if pval < best_p:
+                best_p = pval
+                # extract embedded efoTraits if present
+                efo_emb = a.get("_embedded", {}).get("efoTraits", [])
+                if efo_emb:
+                    traits = [t.get("trait", "") for t in efo_emb if t.get("trait")]
+                    best_trait = "; ".join(traits)
+                else:
+                    # fallback: follow the efoTraits link
+                    efo_link = a.get("_links", {}).get("efoTraits", {}).get("href", "")
+                    if efo_link:
+                        t4 = time.perf_counter()
+                        t_resp = requests.get(efo_link, timeout=10)
+                        t5 = time.perf_counter()
+                        print(f"[TIMER] fetch EFO for {rs} took {t5 - t4:.2f}s")
+                        if t_resp.status_code == 200:
+                            t_js = t_resp.json()
+                            e_list = t_js.get("_embedded", {}).get("efoTraits", [])
+                            best_trait = "; ".join([t.get("trait", "") for t in e_list if t.get("trait")])
+
+        if best_p == math.inf:
+            continue
+
+        records.append({
+            "variant_id": rs,
+            "chrom"     : chrom,
+            "pos"       : int(pos),
+            "pval"      : best_p,
+            "trait"     : best_trait
+        })
+
+    if not records:
+        print(f"[TIMER] No associations found for gene '{symbol}'. Exiting.")
+        return pd.DataFrame(columns=["variant_id", "chrom", "pos", "pval", "trait"])
+
+    df_top = pd.DataFrame(records)
+
+    # 5) Sort by pval ascending, keep top max_snps
+    # t6 = time.perf_counter()
+    # df_top = df.sort_values("pval", ascending=True).head(max_snps).reset_index(drop=True)
+    # t7 = time.perf_counter()
+    # print(f"[TIMER] Sorting & slicing top {max_snps} took {t7 - t6:.2f}s")
+
+    t_end_total = time.perf_counter()
+    print(f"[TIMER] Total fetch_gwas_hits_by_gene time: {t_end_total - t_start_total:.2f}s")
+
+    return df_top[["variant_id", "chrom", "pos", "pval", "trait"]]
+
+
+@st.cache_data(show_spinner=False)
+def fetch_ld_r2(lead_snp: str, population: str, token: str) -> pd.DataFrame:
+    """
+    Call LDlink LDproxy for lead_snp in 'population'. Requires non-empty token.
+    Returns a DataFrame with columns ["variant_id","r2"].
+    """
+    params = {
+        "var"   : lead_snp,
+        "pop"   : population,
+        "r2_d"  : "r2",
+        "token" : token
+    }
+    r = requests.get("https://ldlink.nci.nih.gov/LDlinkRest/ldproxy", params=params, timeout=10)
+    r.raise_for_status()
+    txt = r.text
+    df = pd.read_csv(
+        pd.compat.StringIO(txt), sep="\t",
+        dtype={"#RS_Number": str, "R2": float}
+    ).rename(columns={"#RS_Number": "variant_id", "R2": "r2"})
+    return df[["variant_id","r2"]]
+
+def llm_disease_lookup(inp_traits: set, llm) -> dict:
+    """
+    Returns a mapping from trait to a binary disease flag: 1 if it's a disease, 0 otherwise.
+    """
+    traits_as_list = sorted(list(inp_traits))  # Sort to keep consistent order (optional)
+    formatted_traits = ", ".join([f"'{trait}'" for trait in traits_as_list])  # Safely quote each one
+
+    prompt = PromptTemplate(
+        template="""
+        You are a helpful assistant trained on biomedical trait classification.
+
+        - Here is a list of traits from a GWAS study: [{traits}]
+        - Some are actual diseases, others are not.
+
+        Instructions:
+        - For each trait, determine if it would be considered a **disease**.
+        - Output a Python dictionary where each trait is mapped to 1 if it is a disease, 0 if not.
+        - Return ONLY the dictionary. Example format:
+        {{
+            'amyotrophic lateral sclerosis': 1,
+            'body height': 0,
+            ...
+        }}
+        """,
+        input_variables=["traits"]
+    )
+
+    chain = prompt | llm
+    try:
+        parser_output = chain.invoke({"traits": formatted_traits})
+        # st.write("LLM raw output:")
+        # st.code(parser_output.content)
+        out_dict = ast.literal_eval(parser_output.content)
+    except Exception as e:
+        st.error(f"Failed to parse LLM output: {e}")
+        raise
+
+    return out_dict
+    
+
+def show_gwas_tool(merged_df: pd.DataFrame, llm): # NEEDS TO LIVE IN SAME FILE AS HELPER FUNCTIONS ABOVE
+    """
+    All UI and logic for the GWAS‐hit visualizer.
+    Called when corresponding button is clicked in analyze_data.
+    """
+    st.write("### GWAS Hit Visualizer")
+
+    # 1) Gene-selection dropdown
+    use_custom_genes = st.toggle("Analyze a custom set of genes (Default: Current refined genes)",
+                                 help="If you have uploaded Genes of Interest (GOI), this will prefill the field.")
+    if use_custom_genes:
+        uploaded_goi = st.session_state.get("uploaded_goi_list", [])
+        default_text = ", ".join(uploaded_goi) if uploaded_goi else ""
+        genes_str = st.text_area(
+            "Enter a list of genes (comma-separated):",
+            value=default_text
+        ).strip()
+        inputted_gene_list = [g.strip() for g in genes_str.split(",") if g.strip()]
+    else:
+        inputted_gene_list = merged_df["Gene_Name"].dropna().unique().tolist()
+
+    defaults = inputted_gene_list
+    gene_list = st.multiselect(
+        "**Select one or more genes (Max 10):**",
+        options=defaults,
+        default=defaults[:3] if len(defaults) >= 3 else defaults,
+        max_selections=10
+    )
+    if not gene_list:
+        st.warning("Please select at least one gene.")
+        return
+
+    # 3) Optional LDlink inputs
+    with st.expander("**(Optional) LDlink Settings**",expanded=False):
+        st.write("Consider linkage disequilibirium (and color plots accordingly) in the analysis")
+        ld_token = st.text_input(
+            "LDlink API token (leave blank to skip LD):",
+            type="password",
+            help="If you supply a valid token, r² coloring will be enabled."
+        )
+        pop = st.selectbox("LD population", ["EUR","AFR","EAS","AMR","SAS"], index=0)
+
+    # 4) Show shared traits checkbox
+    show_shared_traits = st.checkbox("Show shared GWAS traits across selected genes", value = True)
+
+    # 5) “Run” button
+    if not st.button("Generate GWAS Results", use_container_width=True, type="primary"):
+        st.info("Adjust settings above and click Generate GWAS Results.")
+        return
+
+    # 6) Fetch hits for each gene
+    MAX_SNPS = 30
+    hits_dict = {}
+    for gene in gene_list:
+        hits = fetch_gwas_hits_by_gene(gene, MAX_SNPS)
+        hits_dict[gene] = hits
+
+    # 7) Shared traits section
+    if show_shared_traits:
+        trait_pairs = []
+        for gene, hits in hits_dict.items():
+            for trait in hits["trait"].dropna().unique():
+                if trait:
+                    trait_pairs.append({"trait": trait, "gene": gene})
+        if trait_pairs:
+            trait_df = pd.DataFrame(trait_pairs)
+            trait_grouped = (
+                trait_df
+                .groupby("trait")["gene"]
+                .agg(list)
+                .reset_index()
+                .rename(columns={"gene": "genes"})
+            )
+            trait_grouped["count"] = trait_grouped["genes"].apply(len)
+            shared_t = trait_grouped[trait_grouped["count"] > 1].copy()
+
+            if shared_t.empty:
+                st.info("No shared traits across selected genes.")
+            else:
+                shared_t["genes"] = shared_t["genes"].apply(lambda lst: ", ".join(lst))
+                shared_t = shared_t[["trait", "genes", "count"]].sort_values(
+                    ["count", "trait"], ascending=[False, True]
+                )
+                st.write("#### Shared GWAS Traits")
+                st.dataframe(shared_t.reset_index(drop=True), use_container_width=True)
+        else:
+            st.info("No traits to compare across selected genes.")
+
+    # 8) For each gene, output summary table then plot
+    for gene in gene_list:
+        hits = hits_dict.get(gene)
+        if hits is None or hits.empty:
+            with st.expander(f"**{gene}** (click to expand)"):
+                st.write(f"No published GWAS hits for {gene}.")
+            continue
+
+        # derive window
+        chrom = hits["chrom"].iloc[0]
+        pos_min, pos_max = int(hits["pos"].min()), int(hits["pos"].max())
+        window_start, window_end = max(1, pos_min - 500_000), pos_max + 500_000
+
+        with st.expander(f"{gene} (click to expand)"):
+            # A) Annotate hits with is_disease
+            traits_set = set(hits["trait"])
+            flags_mapping_dict = llm_disease_lookup(traits_set, llm=llm)
+            # add it into hits itself:
+            hits = hits.copy()
+            hits["is_disease"] = hits["trait"].map(flags_mapping_dict)
+
+            # B) Build a display‐only copy for your table
+            df_disp = hits.copy()
+            df_disp["pval"] = df_disp["pval"].apply(lambda x: f"{x:.2e}")
+            df_disp = df_disp.sort_values("is_disease", ascending=False)
+            # turn rsids into Markdown links
+            df_links = df_disp.copy()
+            df_links["variant_id"] = df_links["variant_id"].apply(
+                lambda vid: f'<a href="https://www.ebi.ac.uk/gwas/variants/{vid}" target="_blank">{vid}</a>'
+            )
+
+            # convert to HTML (escape=False preserves our <a> tags)
+            html_table = df_links.to_html(index=False, escape=False)
+
+            # wrap it in a fixed‐height, scrollable div
+            scrollable = f"""
+            <div style="max-height:400px; overflow-y:auto; border:1px solid #ddd; padding:5px">
+            {html_table}
+            </div>
+            """
+            st.write("**Summary of GWAS hits for this region:**")
+            # st.dataframe(df_disp)
+            st.markdown(
+                scrollable,
+                unsafe_allow_html=True
+            )
+
+            # C) Fetch LD
+            lead = hits.loc[hits["pval"].idxmin(), "variant_id"]
+            if ld_token:
+                try:
+                    ld_df = fetch_ld_r2(lead, pop, ld_token)
+                except Exception as e:
+                    st.warning(f"LDlink error for {lead}: {e}\nSkipping LD for {gene}.")
+                    ld_df = pd.DataFrame(columns=["variant_id", "r2"])
+            else:
+                ld_df = pd.DataFrame(columns=["variant_id", "r2"])
+
+            # D) Plot 
+            fig = create_regional_hits_plot(
+                hits,
+                ld_df,
+                chrom,
+                window_start,
+                window_end,
+                gene.upper().strip()
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
 # builds a pie chart for disease association
 def build_visual_1(llm):
@@ -773,7 +1122,9 @@ def analyze_data(llm):
         if st.button("Gene Set Enrichment Analysis", use_container_width=True):
             st.session_state.most_recent_chart_selection = None
             st.session_state.interactive_visualization = "gsea"
-    
+    if st.button("GWAS Hits", use_container_width=True, help="Not recommended for more than 50 genes"):
+        st.session_state.most_recent_chart_selection = None
+        st.session_state.interactive_visualization = "gwas"
     
     # Necessary to put the interactive visualizations in the main panel:
     if st.session_state.interactive_visualization == "network":
@@ -784,6 +1135,8 @@ def analyze_data(llm):
         plot_coexpressed(merged_df = st.session_state.merged_df)
     elif st.session_state.interactive_visualization == "gsea":
         plot_gsea(merged_df = st.session_state.merged_df)
+    elif st.session_state.interactive_visualization == "gwas":
+        show_gwas_tool(merged_df = st.session_state.merged_df, llm = llm)
     
     # Print most recent saved chart to the screen:
     if st.session_state.most_recent_chart_selection: 

@@ -22,12 +22,13 @@ st.markdown("""
             """)
 
 st.divider()
-with st.expander("**Latest Updates and Changes (05/09/25):**"):
+with st.expander("**Latest Updates and Changes (06/13/25):**"):
     st.markdown("""
+                - Added a GWAS hit visualizer. Find out the top published hits, traits, and disease associations for your genes of interest.
+                - Upload a list of genes of interest on the Data Upload page. BioRemix will detect these genes and allow you to use them at various steps in your analysis.
                 - Added a GSEA tool in the analysis page, allowing users to perform Gene Set Enrichment Analysis on their filtered genes or a custom gene list.
                 - Added a Tissue Coexpression Visualization tool, which lets users see which genes are most highly co-expressed with their gene of interest across different tissues.
                 - Fixed bugs related to handling user-uploaded data.
-                - Improved the UI and added additional helpful tooltips throughout the application.
                 """)
 with st.expander("**▶ Watch Tutorial Video**",expanded=True):
     st.video("https://youtu.be/MUc_28f-k5U")

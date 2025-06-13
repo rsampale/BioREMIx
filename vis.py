@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import json
 import requests
 import plotly.graph_objects as go
@@ -525,3 +526,144 @@ def plot_gsea(merged_df):
                 .properties(height=30*len(df_filtered), width=600)
             )
             st.altair_chart(chart, use_container_width=True)
+
+
+def create_regional_hits_plot(
+    hits_df: pd.DataFrame,
+    ld_df: pd.DataFrame,
+    chrom: str,
+    region_start: int,
+    region_end: int,
+    gene_symbol: str
+):
+    """
+    –log10(p) vs position. 
+    • Non-disease SNPs: circle, colored by r2 (Viridis).  
+    • Disease SNPs: red diamond (ignores r2).  
+    Embeds a catalog URL in customdata for click handling.
+    """
+    df = hits_df.copy()
+    df["minus_log10_p"] = -np.log10(df["pval"])
+
+    # merge r2 or fill with 0
+    if (not ld_df.empty) and ("variant_id" in ld_df.columns):
+        df = df.merge(ld_df[["variant_id","r2"]], on="variant_id", how="left")\
+               .fillna({"r2": 0.0})
+        colorscale = "Viridis"
+    else:
+        df["r2"] = 0.0
+        colorscale = [(0, "lightgray"), (1, "lightgray")]
+
+    ld_available = (not ld_df.empty) and ("variant_id" in ld_df.columns)
+    
+    # add hover and URL
+    if ld_available:
+        df["hover_text"] = (
+            "SNP: "     + df["variant_id"]
+        + "<br>Pos: " + df["pos"].astype(str)
+        + "<br>p = "  + df["pval"].apply(lambda x: f"{x:.2e}")
+        + "<br>Trait: "+ df["trait"].replace("", "N/A")
+        + "<br>r² = " + df["r2"].apply(lambda x: f"{x:.2f}")
+        )
+    else:
+        df["hover_text"] = (
+            "SNP: "     + df["variant_id"]
+        + "<br>Pos: " + df["pos"].astype(str)
+        + "<br>p = "  + df["pval"].apply(lambda x: f"{x:.2e}")
+        + "<br>Trait: "+ df["trait"].replace("", "N/A")
+        )
+    df["catalog_url"] = df["variant_id"].apply(
+        lambda vid: f"https://www.ebi.ac.uk/gwas/variants/{vid}"
+    )
+
+    # split disease vs non-disease
+    df_nd = df[df["is_disease"] == 0]
+    df_d  = df[df["is_disease"] == 1]
+
+    fig = go.Figure()
+
+    if ld_available:
+        nd_marker = dict(
+            size=8,
+            color=df_nd["r2"],
+            colorscale=colorscale,
+            colorbar=dict(title="r² vs lead"),
+            cmin=0, cmax=1
+        )
+    else:
+        nd_marker = dict(
+            size=8,
+            color="lightgray"
+        )
+
+    # add the trace
+    fig.add_trace(go.Scattergl(
+        x=df_nd["pos"],
+        y=df_nd["minus_log10_p"],
+        mode="markers",
+        marker=nd_marker,
+        hoverinfo="text",
+        hovertext=df_nd["hover_text"],
+        customdata=df_nd[["catalog_url"]].values,
+        name="non-disease"
+    ))
+
+    # Disease trace (solid red diamonds)
+    fig.add_trace(go.Scattergl(
+        x=df_d["pos"],
+        y=df_d["minus_log10_p"],
+        mode="markers",
+        marker=dict(
+            symbol="diamond",
+            size=9,
+            color="red",
+            line=dict(width=1, color="DarkRed")
+        ),
+        hoverinfo="text",
+        hovertext=df_d["hover_text"],
+        customdata=df_d[["catalog_url"]].values,
+        name="disease"
+    ))
+
+    # lead SNP star
+    lead_idx = df["pval"].idxmin()
+    lead = df.loc[lead_idx]
+    fig.add_trace(go.Scatter(
+        x=[lead["pos"]],
+        y=[lead["minus_log10_p"]],
+        mode="markers",
+        marker=dict(size=14, symbol="star", color="red"),
+        hoverinfo="skip",
+        showlegend=False,
+    ))
+
+    # GW significance line
+    sig = -np.log10(5e-8)
+    fig.add_hline(
+        y=sig,
+        line_dash="dash", line_color="blue",
+        annotation_text="p=5×10⁻⁸",
+        annotation_position="top right"
+    )
+
+    # gene window
+    fig.add_shape(
+        type="rect",
+        x0=region_start, x1=region_end,
+        y0=0, y1=sig * 0.05,
+        fillcolor="LightSeaGreen", opacity=0.3, line_width=0
+    )
+    fig.add_annotation(
+        x=(region_start+region_end)/2, y=0,
+        text=gene_symbol, showarrow=False, yanchor="bottom"
+    )
+
+    fig.update_layout(
+        title=f"{gene_symbol}: chr{chrom}:{region_start}-{region_end}",
+        xaxis_title=f"Chr {chrom} position (bp)",
+        yaxis_title="-log₁₀(p-value)",
+        margin=dict(t=50, b=50, l=50, r=50),
+        clickmode="event+select"
+    )
+
+    return fig
