@@ -80,7 +80,7 @@ plotly==5.17.0
 prompt_toolkit==3.0.50
 propcache==0.2.0
 proto-plus==1.26.1
-protobuf==6.31.1
+protobuf==5.29.5
 ptyprocess==0.7.0
 pure_eval==0.2.3
 pyarrow==17.0.0
