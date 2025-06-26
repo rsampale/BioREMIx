@@ -2,12 +2,73 @@ import streamlit as st
 import requests
 import os
 import boto3
+import duckdb
 from boto3.dynamodb.conditions import Key
 from decimal import Decimal
 import pandas as pd
 
 # CONNECT TO DYNAMODB FOR HPA DATA USED IN SOME VISUALIZATIONS:
 AWS = st.secrets["aws"]
+
+# AWS S3 CONNECTION FACTORY
+def _build_duckdb_connection() -> duckdb.DuckDBPyConnection:
+    """
+    One-time factory.  Sets up a DuckDB connection that can read
+    from S3 using credentials in st.secrets
+    """
+
+    con = duckdb.connect()
+    con.execute(f"SET s3_access_key_id='{AWS['access_key_id']}';")
+    con.execute(f"SET s3_secret_access_key='{AWS['secret_key']}';")
+    con.execute("INSTALL httpfs; LOAD httpfs;")
+    con.execute(f"SET s3_region='{AWS['region_name']}';")
+    return con
+# Use cache_resrouce to save ~150ms and not re-connect multiple times per user and session
+@st.cache_resource(show_spinner=False)
+def get_con() -> duckdb.DuckDBPyConnection:
+    return _build_duckdb_connection()
+
+def get_clinvar_variant_info(gene_symbol: str, *, assembly: str | None = "GRCh38"):
+    """
+    Return **all** columns from the variant Parquet for a given gene.
+    Optional `assembly` lets you keep only GRCh38 or GRCh37 rows.
+    """
+    BUCKET = AWS.get("clinvar_bucket_name", "clinvar-bucket")
+    VARIANT_PATH = f"s3://{BUCKET}/clinvar/variant_summary.slim.parquet"
+    GENE_PATH    = f"s3://{BUCKET}/clinvar/gene_specific_summary.slim.parquet"
+    
+    con = get_con()
+
+    query = f"""
+        SELECT *
+        FROM read_parquet(?)
+        WHERE GeneSymbol = ?
+        { 'AND Assembly = ?' if assembly else '' }
+    """
+
+    params = [VARIANT_PATH, gene_symbol]
+    if assembly:
+        params.append(assembly)
+
+    return con.execute(query, params).df()
+
+def get_gwas_variant_info(gene_symbol: str):
+    gene_symbol = gene_symbol.upper().strip()
+    if not gene_symbol:
+        return pd.DataFrame()
+
+    VARIANT_PATH = "s3://gwas-data/gwas/gwas_associations.parquet"
+    con = get_con()
+
+    query = r"""
+        SELECT *
+        FROM read_parquet(?)
+        WHERE regexp_matches(
+              "MAPPED_GENE",
+              '(?i)\b' || ? || '\b'          -- one backslash on each side
+        )
+    """
+    return con.execute(query, [VARIANT_PATH, gene_symbol]).df()
 
 def get_dynamodb_table():
     session = boto3.Session(

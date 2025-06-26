@@ -91,20 +91,21 @@ if st.session_state['authenticated']:
                     The Hypothesiszer is BioRemix's bread and butter. It allows researchers to filter and query gene-annotation data and subset it to their
                     genes of interest. Users can then chat with their genetic data or send it to some of our other tools for more robust analyses.
 
-                    1. Make your first refinement (filter). Note that you can subset both rows and/or columns.
-                    2. Make a selection from the following: 'Keep Refining', 'Chat with your Data', or 'Ready to Analyze'
+                    1. (Optional) Upload a list of your Genes of Interest (GOI), or processed Differentially Expressed Genes (DEGs) in the **'Data Upload'** section.
+                    2. Make your first refinement (filter). Note that you can subset both rows and/or columns.
+                    3. Make a selection from the following: 'Keep Refining', 'Chat with your Data', or 'Ready to Analyze'
                         - If you would like to further narrow down your data, select 'Keep Refining'.
                         - If you would like to chat with your data or ask questions of it using human language, select 'Chat with your Data'.
                             - Note that if you have uploaded relevant expression data (logFC, pval, etc.), you may involve it in your queries here. 
                         - In the 'Ready to Analyze' section, you can find quick visualizations of interesting columns, and buttons to send your data/genes
                             to the BioMiners Tool Suite for more robust analyses and visualizations. 
-                    3. Enjoy exploring your genetic data!
+                    4. Enjoy exploring your genetic data!
                     """)
         with st.expander("**Initial Data**",expanded=False):
             st.dataframe(st.session_state.genes_info_df)
             
         st.header("Refine your data",divider='green')
-
+        st.info("Want to filter the data to a pre-set list of genes? You can do so in the **'Data Upload'** section!")
         # Check to see if the user has uploaded genes of interest
         if st.session_state.get('uploaded_goi_list') is not None:
             st.info("**We have detected that you have uploaded a list of genes of interest.**\n\nTo use the uploaded genes as your initial filter, click the button below. Otherwise, provide a refinement statement in the box below as usual.")

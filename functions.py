@@ -23,6 +23,7 @@ from streamlit_plotly_events import plotly_events
 from pyvis.network import Network
 from rag import col_retrieval_rag
 from vis import plot_residues, plot_coexpressed, plot_gsea, create_regional_hits_plot
+from db_utils import get_clinvar_variant_info, get_gwas_variant_info
 
 def authenticate():
     # placeholders variables for UI 
@@ -333,8 +334,8 @@ def llm_disease_lookup(inp_traits: set, llm) -> dict:
         template="""
         You are a helpful assistant trained on biomedical trait classification.
 
-        - Here is a list of traits from a GWAS study: [{traits}]
-        - Some are actual diseases, others are not.
+        - Here is a list of traits from a GWAS or ClinVar study: [{traits}]
+        - Some refernce actual diseases/conditions, others do not.
 
         Instructions:
         - For each trait, determine if it would be considered a **disease**.
@@ -361,12 +362,64 @@ def llm_disease_lookup(inp_traits: set, llm) -> dict:
 
     return out_dict
     
+def make_dbsnp_link(rsid):
+    """
+    Build an HTML link to the dbSNP record.
+    Accepts:
+      • plain integers like 5345346
+      • strings "5345346" or "rs5345346" (case-insensitive)
+    Returns "Unknown" for -1, NaN, empty, or anything non-numeric.
+    """
+    # return unkwnown if can't be identified as an ID
+    if pd.isna(rsid):
+        return "Unknown"
+
+    rsid_str = str(rsid).strip()
+
+    if rsid_str in {"-1", "", "nan"}:
+        return "Unknown"
+
+    # If it’s already ‘rs…’ keep it; if it’s just digits, prepend ‘rs’
+    if rsid_str.lower().startswith("rs"):
+        core = rsid_str[2:]
+    else:
+        core = rsid_str
+
+    # Validate that the remaining part is all digits (is not an rsid otherwise)
+    if not re.fullmatch(r"\d+", core):
+        return "Unknown"
+
+    rsid_full = f"rs{core}" # put prefix back or make sure its there 
+    url = f"https://www.ncbi.nlm.nih.gov/snp/{rsid_full}"
+    return f'<a href="{url}" target="_blank">{rsid_full}</a>'
 
 def show_gwas_tool(merged_df: pd.DataFrame, llm): # NEEDS TO LIVE IN SAME FILE AS HELPER FUNCTIONS ABOVE
     """
     All UI and logic for the GWAS‐hit visualizer.
     Called when corresponding button is clicked in analyze_data.
     """
+    clinvar_cols = [ # Used later when selecting which columns to keep from S3 retrieved data
+        "RS# (dbSNP)",
+        "Type",
+        "ClinicalSignificance",
+        "PhenotypeList",
+        "LastEvaluated",
+        "Chromosome",
+        "Start",
+        "Stop"
+    ]
+    gwas_cols = [
+        "SNPS",
+        "MAPPED_GENE",
+        "MAPPED_TRAIT",
+        "P-VALUE",
+        "LINK",
+        "STUDY",
+        "CHR_ID",
+        "CHR_POS",
+        "CONTEXT",
+        "DATE ADDED TO CATALOG"
+    ]
     st.write("### GWAS Hit Visualizer")
 
     # 1) Gene-selection dropdown
@@ -414,9 +467,30 @@ def show_gwas_tool(merged_df: pd.DataFrame, llm): # NEEDS TO LIVE IN SAME FILE A
 
     # 6) Fetch hits for each gene
     MAX_SNPS = 30
-    hits_dict = {}
+    hits_dict  = {}
+
     for gene in gene_list:
-        hits = fetch_gwas_hits_by_gene(gene, MAX_SNPS)
+        raw = get_gwas_variant_info(gene)
+        if raw.empty:
+            hits_dict[gene]  = pd.DataFrame()
+            continue
+
+        df_show = raw.loc[:, gwas_cols].copy()
+
+        hits = ( # reshape because hits and the plotting func that uses it needs a specific format
+            raw.assign(
+                variant_id = raw["SNPS"].str.split(",").str[0].str.strip(),
+                chrom      = raw["CHR_ID"],
+                pos        = pd.to_numeric(raw["CHR_POS"], errors="coerce"),
+                pval       = pd.to_numeric(raw["P-VALUE"], errors="coerce"),
+                trait      = raw["MAPPED_TRAIT"].fillna(raw["DISEASE/TRAIT"])
+            )
+            .loc[:, ["variant_id", "chrom", "pos", "pval", "trait"]]
+            .dropna(subset=["variant_id", "pos", "pval"])
+            .sort_values("pval")
+            .head(MAX_SNPS)
+        )
+
         hits_dict[gene] = hits
 
     # 7) Shared traits section
@@ -463,61 +537,93 @@ def show_gwas_tool(merged_df: pd.DataFrame, llm): # NEEDS TO LIVE IN SAME FILE A
         pos_min, pos_max = int(hits["pos"].min()), int(hits["pos"].max())
         window_start, window_end = max(1, pos_min - 500_000), pos_max + 500_000
 
-        with st.expander(f"{gene} (click to expand)"):
-            # A) Annotate hits with is_disease
-            traits_set = set(hits["trait"])
-            flags_mapping_dict = llm_disease_lookup(traits_set, llm=llm)
-            # add it into hits itself:
-            hits = hits.copy()
-            hits["is_disease"] = hits["trait"].map(flags_mapping_dict)
+        with st.expander(f"**{gene}** (click to expand)"):
+            gwas_tab, clinvar_tab = st.tabs(["GWAS", "ClinVar"])
+            with gwas_tab:
+                # A) Annotate hits with is_disease
+                traits_set = set(hits["trait"])
+                flags_mapping_dict = llm_disease_lookup(traits_set, llm=llm)
+                # add it into hits itself:
+                hits = hits.copy()
+                hits["is_disease"] = hits["trait"].map(flags_mapping_dict)
 
-            # B) Build a display‐only copy for your table
-            df_disp = hits.copy()
-            df_disp["pval"] = df_disp["pval"].apply(lambda x: f"{x:.2e}")
-            df_disp = df_disp.sort_values("is_disease", ascending=False)
-            # turn rsids into Markdown links
-            df_links = df_disp.copy()
-            df_links["variant_id"] = df_links["variant_id"].apply(
-                lambda vid: f'<a href="https://www.ebi.ac.uk/gwas/variants/{vid}" target="_blank">{vid}</a>'
-            )
+                # B) Build a display‐only copy for your table
+                df_disp = hits.copy()
+                df_disp["pval"] = df_disp["pval"].apply(lambda x: f"{x:.2e}")
+                df_disp = df_disp.sort_values("is_disease", ascending=False)
+                # turn rsids into Markdown links
+                df_links = df_disp.copy()
+                df_links["variant_id"] = df_links["variant_id"].apply(
+                    lambda vid: f'<a href="https://www.ebi.ac.uk/gwas/variants/{vid}" target="_blank">{vid}</a>'
+                )
 
-            # convert to HTML (escape=False preserves our <a> tags)
-            html_table = df_links.to_html(index=False, escape=False)
+                # convert to HTML (escape=False preserves our <a> tags)
+                html_table = df_links.to_html(index=False, escape=False)
 
-            # wrap it in a fixed‐height, scrollable div
-            scrollable = f"""
-            <div style="max-height:400px; overflow-y:auto; border:1px solid #ddd; padding:5px">
-            {html_table}
-            </div>
-            """
-            st.write("**Summary of GWAS hits for this region:**")
-            # st.dataframe(df_disp)
-            st.markdown(
-                scrollable,
-                unsafe_allow_html=True
-            )
+                # wrap it in a fixed‐height, scrollable div
+                scrollable = f"""
+                <div style="max-height:400px; overflow-y:auto; border:1px solid #ddd; padding:5px">
+                {html_table}
+                </div>
+                """
+                st.write("**Summary of GWAS hits for this region:**")
+                # st.dataframe(df_disp)
+                st.markdown(
+                    scrollable,
+                    unsafe_allow_html=True
+                )
 
-            # C) Fetch LD
-            lead = hits.loc[hits["pval"].idxmin(), "variant_id"]
-            if ld_token:
-                try:
-                    ld_df = fetch_ld_r2(lead, pop, ld_token)
-                except Exception as e:
-                    st.warning(f"LDlink error for {lead}: {e}\nSkipping LD for {gene}.")
+                # C) Fetch LD
+                lead = hits.loc[hits["pval"].idxmin(), "variant_id"]
+                if ld_token:
+                    try:
+                        ld_df = fetch_ld_r2(lead, pop, ld_token)
+                    except Exception as e:
+                        st.warning(f"LDlink error for {lead}: {e}\nSkipping LD for {gene}.")
+                        ld_df = pd.DataFrame(columns=["variant_id", "r2"])
+                else:
                     ld_df = pd.DataFrame(columns=["variant_id", "r2"])
-            else:
-                ld_df = pd.DataFrame(columns=["variant_id", "r2"])
 
-            # D) Plot 
-            fig = create_regional_hits_plot(
-                hits,
-                ld_df,
-                chrom,
-                window_start,
-                window_end,
-                gene.upper().strip()
-            )
-            st.plotly_chart(fig, use_container_width=True)
+                # D) Plot 
+                fig = create_regional_hits_plot(
+                    hits,
+                    ld_df,
+                    chrom,
+                    window_start,
+                    window_end,
+                    gene.upper().strip()
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            with clinvar_tab:
+                retrieved_clinvar = get_clinvar_variant_info(gene)
+                filtered_clinvar = (
+                    retrieved_clinvar
+                        # keep only pathogenic / likely-pathogenic entries
+                        .loc[retrieved_clinvar["ClinSigSimple"] == '1', clinvar_cols]
+                        # Remove exact duplicates that sometimes crop up
+                        .drop_duplicates()
+                        # consistent row ordering:
+                        .reset_index(drop=True)
+                )
+                
+                clinvar_links = filtered_clinvar.copy()
+                clinvar_links["RS# (dbSNP)"] = clinvar_links["RS# (dbSNP)"].apply(make_dbsnp_link)
+
+                # convert to HTML (escape=False preserves our <a> tags)
+                html_table = clinvar_links.to_html(index=False, escape=False)
+
+                # wrap it in a fixed‐height, scrollable div
+                scrollable = f"""
+                <div style="max-height:400px; overflow-y:auto; border:1px solid #ddd; padding:5px">
+                {html_table}
+                </div>
+                """
+                st.write(f"**Summary of ClinVar data for {gene}**")
+                st.markdown(
+                    scrollable,
+                    unsafe_allow_html=True
+                )
+                # st.dataframe(filtered_clinvar)
 
 # builds a pie chart for disease association
 def build_visual_1(llm):
