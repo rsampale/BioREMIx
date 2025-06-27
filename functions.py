@@ -398,6 +398,7 @@ def show_gwas_tool(merged_df: pd.DataFrame, llm): # NEEDS TO LIVE IN SAME FILE A
     All UI and logic for the GWAS‐hit visualizer.
     Called when corresponding button is clicked in analyze_data.
     """
+
     clinvar_cols = [ # Used later when selecting which columns to keep from S3 retrieved data
         "RS# (dbSNP)",
         "Type",
@@ -412,6 +413,7 @@ def show_gwas_tool(merged_df: pd.DataFrame, llm): # NEEDS TO LIVE IN SAME FILE A
         "SNPS",
         "MAPPED_GENE",
         "MAPPED_TRAIT",
+        "DISEASE/TRAIT",
         "P-VALUE",
         "LINK",
         "STUDY",
@@ -420,6 +422,20 @@ def show_gwas_tool(merged_df: pd.DataFrame, llm): # NEEDS TO LIVE IN SAME FILE A
         "CONTEXT",
         "DATE ADDED TO CATALOG"
     ]
+    STOPWORDS = {"not provided", "not specified", "see cases"}
+    def normalize_trait(trait: str) -> str: # regex helper for cleaning up some traits later and getting better clinvar shared matches
+        t = trait.lower()
+        # remove stopwords
+        for stop in STOPWORDS:
+            t = re.sub(rf'\b{re.escape(stop)}\b', '', t)
+        # strip digits
+        t = re.sub(r'\d+', '', t)
+        # drop punctuation (keep letters and spaces)
+        t = re.sub(r'[^a-z\s]', ' ', t)
+        # collapse whitespace
+        t = re.sub(r'\s+', ' ', t).strip()
+        return t
+
     st.write("### GWAS Hit Visualizer")
 
     # 1) Gene-selection dropdown
@@ -458,19 +474,22 @@ def show_gwas_tool(merged_df: pd.DataFrame, llm): # NEEDS TO LIVE IN SAME FILE A
         pop = st.selectbox("LD population", ["EUR","AFR","EAS","AMR","SAS"], index=0)
 
     # 4) Show shared traits checkbox
-    show_shared_traits = st.checkbox("Show shared GWAS traits across selected genes", value = True)
+    show_shared_traits = st.checkbox("Show shared GWAS and ClinVar traits across selected genes", value = True)
 
     # 5) “Run” button
-    if not st.button("Generate GWAS Results", use_container_width=True, type="primary"):
+    if not st.button("Generate GWAS/ClinVar Results", use_container_width=True, type="primary"):
         st.info("Adjust settings above and click Generate GWAS Results.")
         return
 
     # 6) Fetch hits for each gene
     MAX_SNPS = 30
     hits_dict  = {}
+    clinvar_dict = {}
 
     for gene in gene_list:
         raw = get_gwas_variant_info(gene)
+        raw_cv = get_clinvar_variant_info(gene) # clinvar retrieval
+        clinvar_dict[gene] = raw_cv # we can use this later in step 8 where we make the display df
         if raw.empty:
             hits_dict[gene]  = pd.DataFrame()
             continue
@@ -523,6 +542,66 @@ def show_gwas_tool(merged_df: pd.DataFrame, llm): # NEEDS TO LIVE IN SAME FILE A
                 st.dataframe(shared_t.reset_index(drop=True), use_container_width=True)
         else:
             st.info("No traits to compare across selected genes.")
+
+        # 7b) Shared ClinVar traits
+        cl_pairs = []
+        for gene, retrieved in clinvar_dict.items():
+            filtered_cv = (
+                retrieved
+                .loc[retrieved["ClinSigSimple"] == '1', clinvar_cols]
+                .drop_duplicates()
+                .reset_index(drop=True)
+            )
+
+            for plist in filtered_cv["PhenotypeList"].dropna():
+                for raw_trait in re.split(r"[|;]", plist):
+                    raw = raw_trait.strip()
+                    if not raw or raw.lower() in STOPWORDS:
+                        continue
+
+                    norm = normalize_trait(raw)
+                    if not norm:
+                        continue
+
+                    cl_pairs.append({
+                        "trait_raw": raw,
+                        "trait_norm": norm,
+                        "gene": gene
+                    })
+
+        # build a DataFrame and dedupe trait-gene pairs
+        cl_df = pd.DataFrame(cl_pairs).drop_duplicates(subset=["trait_norm", "gene"])
+
+        # group and collect unique genes per trait
+        cl_grouped = (
+            cl_df
+            .groupby("trait_norm")
+            .agg({
+                "gene": lambda g: sorted(set(g)),
+                "trait_raw": lambda raws: sorted(set(raws))[0]
+            })
+            .reset_index()
+        )
+
+        # count how many distinct genes each trait has
+        cl_grouped["count"] = cl_grouped["gene"].apply(len)
+
+        # only keep traits seen in more than one gene
+        shared_cv = cl_grouped[cl_grouped["count"] > 1].copy()
+
+        if shared_cv.empty:
+            st.info("No shared ClinVar phenotypes across selected genes.")
+        else:
+            # turn the gene-lists into comma separated strings
+            shared_cv["genes"] = shared_cv["gene"].apply(lambda lst: ", ".join(lst))
+            shared_cv = shared_cv[["trait_raw", "genes", "count"]].rename(
+                columns={"trait_raw": "trait"}
+            )
+            shared_cv = shared_cv.sort_values(["count", "trait"], ascending=[False, True])
+            st.write("#### Shared ClinVar Phenotypes")
+            st.warning("ClinVar labels are inconsistent. While we have tried to account for some of this variation, some shared traits may be missed. Inspect the individual gene tables for a more detailed view of each gene's ClinVar data.")
+            st.dataframe(shared_cv.reset_index(drop=True), use_container_width=True)
+
 
     # 8) For each gene, output summary table then plot
     for gene in gene_list:
@@ -595,7 +674,7 @@ def show_gwas_tool(merged_df: pd.DataFrame, llm): # NEEDS TO LIVE IN SAME FILE A
                 )
                 st.plotly_chart(fig, use_container_width=True)
             with clinvar_tab:
-                retrieved_clinvar = get_clinvar_variant_info(gene)
+                retrieved_clinvar = clinvar_dict[gene]
                 filtered_clinvar = (
                     retrieved_clinvar
                         # keep only pathogenic / likely-pathogenic entries
@@ -829,7 +908,7 @@ def build_visual_2(llm):
     # Store in session state
     st.session_state["most_recent_chart_selection"] = img_bytes
 
-def build_visual_3(llm):
+def build_visual_3(llm): # NETWORK DIAGRAM FOR PROTEINS
 
     def extract_protein_name(protein):
         match = re.search(r"\[([A-Za-z0-9_]+)\]", protein)
@@ -974,7 +1053,7 @@ def build_visual_3(llm):
 
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(updated_html)
-        
+        st.info("You can zoom and scroll through the network diagram. Click on a node to see its name and highlight connected nodes/proteins.")
         st.components.v1.html(updated_html, height=800, scrolling=True)
     
     else:
@@ -1228,7 +1307,7 @@ def analyze_data(llm):
         if st.button("Gene Set Enrichment Analysis", use_container_width=True):
             st.session_state.most_recent_chart_selection = None
             st.session_state.interactive_visualization = "gsea"
-    if st.button("GWAS Hits", use_container_width=True, help="Not recommended for more than 50 genes"):
+    if st.button("GWAS + ClinVar Analysis", use_container_width=True, help="Not recommended for more than 50 genes"):
         st.session_state.most_recent_chart_selection = None
         st.session_state.interactive_visualization = "gwas"
     
