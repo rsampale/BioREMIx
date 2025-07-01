@@ -704,7 +704,7 @@ def show_gwas_tool(merged_df: pd.DataFrame, llm): # NEEDS TO LIVE IN SAME FILE A
                 )
                 # st.dataframe(filtered_clinvar)
 
-# builds a pie chart for disease association
+# builds a euler diagram for disease association
 def build_visual_1(llm):
 
     all_columns = list(st.session_state.merged_df.columns)
@@ -780,12 +780,15 @@ def build_visual_1(llm):
     # Iteratively counts number of each disease tuple occurrence
     tuple_counts = {}
     for tup in disease_tuples:
-        if tup in tuple_counts:
-            tuple_counts[tup] += 1
-        else:
-            tuple_counts[tup] = 1
+        tuple_counts[tup] = tuple_counts.get(tup, 0) + 1
+   
+    tuple_counts = {t: c for t, c in tuple_counts.items() if any(t)}
+
     
     fig1, ax = plt.subplots(figsize=(8, 6))
+    if len(disease_list_labels) < 2:
+        st.session_state["most_recent_chart_selection"] = "no_euler"
+        return
     diagram = EulerDiagram(tuple_counts, set_labels = disease_list_labels, ax = ax)
 
     # get orgins, radii, width, height to help place labels
@@ -1324,8 +1327,11 @@ def analyze_data(llm):
         show_gwas_tool(merged_df = st.session_state.merged_df, llm = llm)
     
     # Print most recent saved chart to the screen:
-    if st.session_state.most_recent_chart_selection: 
-         st.image(st.session_state.most_recent_chart_selection) # SHOULD MAKE IT SO THAT THIS GETS DELETED IF NEW REFINEMENTS ARE MADE (as it would no longer be accurate)
+    if st.session_state.most_recent_chart_selection:
+        if st.session_state.most_recent_chart_selection == "no_euler": # Occurs when the euler viz func fails because < 2 associated diseases
+            st.info("Less than 2 known neurodegenerative disease associations across selected genes.")
+        else: 
+            st.image(st.session_state.most_recent_chart_selection) # SHOULD MAKE IT SO THAT THIS GETS DELETED IF NEW REFINEMENTS ARE MADE (as it would no longer be accurate)
     
     st.divider()
     

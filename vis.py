@@ -292,43 +292,6 @@ def plot_residues(df: pd.DataFrame) -> go.Figure:
 
 def plot_coexpressed(merged_df):
     
-    # LEGACY VERSION - NON HEATMAP
-
-    # big_df = pd.read_parquet("data/hpa_top100_coexpressed.parquet")
-
-    # st.divider()
-    # st.header("Tissue Co-expression Visualizer")
-
-    # use_refined_only = st.checkbox("Search only current/refined genes",value=True)
-    # if use_refined_only:
-    #     gene = st.selectbox("Pick a gene:", sorted(st.session_state.user_refined_df['Gene_Name'].unique()))
-    # else:
-    #     gene = st.selectbox("Pick a gene:", sorted(big_df['gene'].unique()))
-
-    # k = st.slider("How many partners (k)?", 1, 15, 10) # default 5 most coexpressed genes
-
-    # df_hpa = (
-    #     big_df[big_df["gene"] == gene]
-    #     .nlargest(k, "pearson_r")
-    #     .reset_index(drop=True)
-    #     .loc[:, ["partner", "pearson_r", "top_celltypes"]]
-    # )
-
-    # st.dataframe(df_hpa,
-    #              use_container_width=True,
-    #              column_config={
-    #                  "top_celltypes": st.column_config.Column(
-    #                      "Tissues with Increased Expression",
-    #                      width="large"
-    #                  ),
-    #                  "partner": st.column_config.Column(
-    #                      "Gene Partner"),
-    #                  "pearson_r": st.column_config.Column(
-    #                      help="Tissue expression profile correlation (pearson)")
-    #              })
-    # st.write("**Source:** Human Protein Atlast (HPA)")
-    
-    
     ##### FULL VERSION W/ HEATMAP #####
     st.divider()
     st.header("Tissue Co-expression Visualizer")
