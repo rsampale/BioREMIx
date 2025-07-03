@@ -330,6 +330,7 @@ def plot_coexpressed(merged_df):
                 title=f"Tissue-Gene Coexpression (colored by Correlation Contributions) for {query2} (Top {k2} partner genes)",
                 height=600, margin=dict(l=100, r=20, t=50, b=100)
             )
+            st.info("NOTE: To make the labels more clear, you should expand the heatmap by clicking the **Expand** button in the top right corner of the plot.")
             st.plotly_chart(fig, use_container_width=True)
 
 def plot_gsea(merged_df):
@@ -367,7 +368,7 @@ def plot_gsea(merged_df):
 
     # Search available libraries and use it for the analysis, then run analysis
     if libraries is not None:
-        selected_library = st.selectbox("Select a library to search:", libraries, index=69)
+        selected_library = st.selectbox("Select a library to search:", libraries, index=66) # default to "GO_Biological_Process_2025", this can change as enrichr updates and adds new libraries though
     else:
         selected_library = st.text_input("Manually type name of the Enrichr library you want to use in the analysis:","GO_Molecular_Function_2025")
     

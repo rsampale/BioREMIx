@@ -33,6 +33,7 @@ def get_clinvar_variant_info(gene_symbol: str, *, assembly: str | None = "GRCh38
     Return **all** columns from the variant Parquet for a given gene.
     Optional `assembly` lets you keep only GRCh38 or GRCh37 rows.
     """
+    gene_symbol = gene_symbol.upper().strip()
     BUCKET = AWS.get("clinvar_bucket_name", "clinvar-bucket")
     VARIANT_PATH = f"s3://{BUCKET}/clinvar/variant_summary.slim.parquet"
     GENE_PATH    = f"s3://{BUCKET}/clinvar/gene_specific_summary.slim.parquet"

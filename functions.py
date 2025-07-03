@@ -491,7 +491,7 @@ def show_gwas_tool(merged_df: pd.DataFrame, llm): # NEEDS TO LIVE IN SAME FILE A
         raw_cv = get_clinvar_variant_info(gene) # clinvar retrieval
         clinvar_dict[gene] = raw_cv # we can use this later in step 8 where we make the display df
         if raw.empty:
-            hits_dict[gene]  = pd.DataFrame()
+            hits_dict[gene]  = pd.DataFrame(columns=["variant_id","chrom","pos","pval","trait"])
             continue
 
         df_show = raw.loc[:, gwas_cols].copy()
