@@ -99,7 +99,7 @@ def fetch_gene_list_from_ddb(table) -> list[str]:
     return sorted(genes)
 
 
-def fetch_contribs_from_ddb(table, query_gene: str) -> pd.DataFrame:
+def fetch_contribs_from_ddb_legacy(table, query_gene: str) -> pd.DataFrame:
     """
     Get the single item for query_gene and unpack the 'partners' list into
     a DataFrame (index=tissue, columns=partner, values=contrib_ti).
@@ -126,6 +126,67 @@ def fetch_contribs_from_ddb(table, query_gene: str) -> pd.DataFrame:
     )
     
     return df, pearson_r
+
+@st.cache_data
+def get_coexpression_data(
+    gene_symbol: str,
+    k: int = 10,
+    *,
+    bucket: str = "hpa-tool-data",
+    refined_genes: list[str] | None = None,
+) -> pd.DataFrame:
+    """
+    Returns a DataFrame with rows = [ query gene + its top-k partners ],
+    columns = ['gene','pearson_r', tissue_1 … tissue_50], ordered:
+      • query gene first (pearson_r NULL)
+      • then partners sorted by descending pearson_r
+    If `refined_genes` is provided, only those partners will be considered.
+    """
+    gene = gene_symbol.upper().strip()
+    con = get_con()
+
+    corr_path = f"s3://{bucket}/hpa/correlations/gene={gene}/*.parquet"
+    expr_path = f"s3://{bucket}/hpa/expression/expression.parquet"
+
+    # build an optional AND-clause (this is if we are using the refined only filtering mode)
+    if refined_genes:
+        # escape and quote each gene
+        quoted = ", ".join(f"'{g.upper().strip()}'" for g in refined_genes)
+        filter_clause = f"AND partner IN ({quoted})"
+    else:
+        filter_clause = ""
+
+    sql = f"""
+    WITH top_corr AS (
+      SELECT partner, pearson_r
+      FROM read_parquet('{corr_path}')
+      WHERE gene = '{gene}'
+        {filter_clause}
+      ORDER BY pearson_r DESC
+      LIMIT {k}
+    ),
+    expr AS (
+      SELECT *
+      FROM read_parquet('{expr_path}')
+      WHERE gene = '{gene}'
+         OR gene IN (SELECT partner FROM top_corr)
+    )
+    SELECT
+      expr.gene                           AS gene,
+      CASE WHEN expr.gene = '{gene}' THEN NULL
+           ELSE top_corr.pearson_r
+      END                                 AS pearson_r,
+      expr.*                             -- 50 tissue cols
+    FROM expr
+    LEFT JOIN top_corr
+      ON expr.gene = top_corr.partner
+    ORDER BY
+      CASE WHEN expr.gene = '{gene}' THEN 0 ELSE 1 END,
+      pearson_r DESC
+    ;
+    """
+
+    return con.execute(sql).df()
 
 @st.cache_data(show_spinner=False)
 def fetch_enrichr_libs(lib_url : str) -> list[str]:

@@ -9,13 +9,15 @@ import re
 import altair as alt
 import matplotlib.pyplot as plt
 from db_utils import (
+    get_con,
     get_dynamodb_table,
     fetch_gene_list_from_ddb,
-    fetch_contribs_from_ddb,
+    fetch_contribs_from_ddb_legacy,
+    get_coexpression_data,
     fetch_enrichr_libs
 )
 
-### DDB FETCHING FUNCTIONS USED TO ACCESS HPA DATA IN SOME VISUALIZATIONS ###
+### DDB FETCHING FUNCTIONS USED TO ACCESS HPA DATA IN SOME VISUALIZATIONS (MOSTLY LEGACY) ###
 
 # ── CACHE the DynamoDB connection ─────────────────
 @st.cache_resource
@@ -24,15 +26,25 @@ def get_table():
 
 # ── CACHE the gene list ───────────
 @st.cache_data
-def load_genes():
+def load_genes_ddb():
     return fetch_gene_list_from_ddb(get_table())
 
 # ── CACHE each gene’s contribs ─────────────────────
 @st.cache_data
 def load_contribs(gene: str):
-    return fetch_contribs_from_ddb(get_table(), gene)
+    return fetch_contribs_from_ddb_legacy(get_table(), gene)
 
 ### END DDB FETCHING FUNCTIONS ###
+
+### S3 FETCHING GENE LIST ###
+@st.cache_data
+def load_genes(bucket: str = "hpa-tool-data", prefix: str = "hpa/expression/expression.parquet"): # MODIFY S3 BUCKET NBAMES AND PREFIX AS NEEDED
+    con = get_con() #gets duckdb con from ddb_utils.py
+    df = con.execute(f"""
+        SELECT gene
+        FROM read_parquet('s3://{bucket}/{prefix}')
+    """).df()
+    return sorted(df['gene'].tolist())
 
 
 def plot_residues(df: pd.DataFrame) -> go.Figure:
@@ -290,7 +302,7 @@ def plot_residues(df: pd.DataFrame) -> go.Figure:
     
 # Coexpression visualizer:
 
-def plot_coexpressed(merged_df):
+def plot_coexpressed_legacy(merged_df):
     
     ##### FULL VERSION W/ HEATMAP #####
     st.divider()
@@ -300,7 +312,7 @@ def plot_coexpressed(merged_df):
     if use_refined_only2:
         gene_list = sorted(merged_df['Gene_Name'].unique())
     else:
-        gene_list = load_genes()
+        gene_list = load_genes_ddb()
     
     query2 = st.selectbox("Choose query gene", gene_list)
     k2 = st.slider("How many gene partners (k)?", 1, 15, 10)
@@ -331,6 +343,66 @@ def plot_coexpressed(merged_df):
                 height=600, margin=dict(l=100, r=20, t=50, b=100)
             )
             st.info("NOTE: To make the labels more clear, you should expand the heatmap by clicking the **Expand** button in the top right corner of the plot.")
+            st.plotly_chart(fig, use_container_width=True)
+
+def plot_coexpressed(merged_df):
+    
+    ##### FULL VERSION W/ HEATMAP #####
+    st.divider()
+    st.header("Tissue Co-expression Visualizer")
+    st.write("Based on Human Protein Atlas (HPA) tissue expression data.")
+    
+    use_refined_only = st.toggle("Search only current refined genes", value=True)
+    if use_refined_only:
+        # supply only those genes
+        allowed_genes = sorted(merged_df["Gene_Name"].unique())
+    else:
+        # supply the full universe
+        allowed_genes = load_genes()
+
+    query2 = st.selectbox("Choose query gene", allowed_genes)
+    k2     = st.slider("How many gene partners (k)?", 1, 15, 10)
+
+    st.info("NOTE: To make the labels more clear/accurate, you should expand the heatmap by clicking the **Expand** button in the top right corner of the plot.")
+
+    if query2:
+        df = get_coexpression_data(
+            query2,
+            k2,
+            refined_genes = allowed_genes if use_refined_only else None
+        )
+
+        if df.empty:
+            st.warning(f"No data for {query2}")
+        else:
+            # split out the query row and sort the partners by pearson r
+            query_df    = df[df["gene"] == query2]
+            partners_df = df[df["gene"] != query2].sort_values(
+                "pearson_r", ascending=False
+            )
+            df_sorted   = pd.concat([query_df, partners_df], ignore_index=True)
+
+            # 2) get labels from the sorted df
+            labels = [
+                f"{g} (query)" if g == query2 else f"{g} (r={r:.2f})"
+                for g, r in zip(df_sorted["gene"], df_sorted["pearson_r"])
+            ]
+
+            # drop metadata and set up heatmap df
+            heat_df = (
+                df_sorted
+                .drop(columns=["gene", "pearson_r"])
+                .set_index(pd.Index(labels, name="Gene"))
+            )
+
+            # actualy plot
+            fig = px.imshow(
+                heat_df,
+                labels={"x": "Tissue", "y": "Gene", "color": "Expression"},
+                x=heat_df.columns,
+                y=heat_df.index,
+                aspect="auto",
+            )
             st.plotly_chart(fig, use_container_width=True)
 
 def plot_gsea(merged_df):
